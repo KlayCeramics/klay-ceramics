@@ -1,0 +1,2747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klay Ceramics — Studio Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --clay: #c4785a;
+    --clay-light: #e8c4a8;
+    --clay-dark: #8b4e35;
+    --earth: #6b5744;
+    --sand: #f5ede3;
+    --sand-dark: #eeddd0;
+    --cream: #faf6f1;
+    --smoke: #3d2e25;
+    --ash: #7a6a5f;
+    --glaze-blue: #4a7fa5;
+    --glaze-green: #5a8a6a;
+    --bisque: #d4a96a;
+    --white: #fff;
+    --shadow: 0 2px 12px rgba(61,46,37,0.10);
+    --shadow-lg: 0 8px 32px rgba(61,46,37,0.15);
+    --radius: 10px;
+    --transition: 0.18s ease;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--smoke);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  h1,h2,h3,h4,h5 { font-family: 'Cormorant Garamond', serif; font-weight: 400; letter-spacing: 0.01em; }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--smoke);
+    color: var(--sand);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  }
+  .app-header .logo { font-family: 'Cormorant Garamond', serif; font-size: 1.55rem; font-weight: 300; letter-spacing: 0.12em; color: var(--clay-light); white-space: nowrap; }
+  .app-header .logo span { color: var(--clay); font-style: italic; }
+  .header-month { margin-left: auto; font-size: 0.8rem; color: var(--ash); letter-spacing: 0.06em; }
+
+  /* ── NAV ── */
+  .app-nav {
+    background: var(--sand);
+    border-bottom: 1.5px solid var(--sand-dark);
+    display: flex;
+    overflow-x: auto;
+    gap: 0;
+    padding: 0 1.5rem;
+    scrollbar-width: none;
+  }
+  .app-nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    background: none;
+    border: none;
+    padding: 0.9rem 1.1rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ash);
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    white-space: nowrap;
+    transition: color var(--transition), border-color var(--transition);
+  }
+  .nav-btn:hover { color: var(--clay-dark); }
+  .nav-btn.active { color: var(--clay-dark); border-bottom-color: var(--clay); }
+
+  /* ── LAYOUT ── */
+  .app-body { display: flex; flex: 1; }
+  .page { display: none; flex: 1; padding: 2rem; max-width: 1280px; margin: 0 auto; width: 100%; }
+  .page.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.25rem;
+    color: var(--clay-dark);
+    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--sand-dark);
+  }
+
+  /* ── TABS ── */
+  .tab-bar { display: flex; gap: 0.4rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .tab-btn {
+    background: var(--sand);
+    border: 1.5px solid var(--sand-dark);
+    border-radius: 20px;
+    padding: 0.35rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ash);
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: 0.04em;
+  }
+  .tab-btn:hover { background: var(--clay-light); border-color: var(--clay-light); color: var(--clay-dark); }
+  .tab-btn.active { background: var(--clay); border-color: var(--clay); color: var(--white); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── FORMS ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .form-grid.wide { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+  .form-group label { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ash); }
+  .form-group input, .form-group select, .form-group textarea {
+    border: 1.5px solid var(--sand-dark);
+    border-radius: 6px;
+    padding: 0.48rem 0.7rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    color: var(--smoke);
+    background: var(--cream);
+    transition: border-color var(--transition);
+    width: 100%;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: var(--clay);
+    background: var(--white);
+  }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .form-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .form-row .form-group { flex: 1; min-width: 140px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: 0.03em;
+  }
+  .btn-primary { background: var(--clay); color: var(--white); }
+  .btn-primary:hover { background: var(--clay-dark); }
+  .btn-secondary { background: var(--sand); color: var(--earth); border: 1.5px solid var(--sand-dark); }
+  .btn-secondary:hover { background: var(--sand-dark); }
+  .btn-danger { background: #e05c5c; color: var(--white); }
+  .btn-danger:hover { background: #c04444; }
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.76rem; }
+  .btn-ghost { background: none; color: var(--ash); border: 1.5px solid var(--sand-dark); }
+  .btn-ghost:hover { background: var(--sand); color: var(--smoke); }
+
+  /* ── TABLES ── */
+  .table-wrap { overflow-x: auto; border-radius: 8px; border: 1.5px solid var(--sand-dark); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  thead th {
+    background: var(--sand);
+    padding: 0.65rem 0.8rem;
+    text-align: left;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ash);
+    white-space: nowrap;
+  }
+  tbody tr { border-top: 1px solid var(--sand-dark); transition: background var(--transition); }
+  tbody tr:hover { background: var(--sand); }
+  tbody td { padding: 0.6rem 0.8rem; vertical-align: middle; }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .profit-pos { color: #3a8a3a; font-weight: 500; }
+  .profit-neg { color: #c04444; font-weight: 500; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-block;
+    padding: 0.18rem 0.55rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .badge-clay { background: var(--clay-light); color: var(--clay-dark); }
+  .badge-blue { background: #ddeef8; color: var(--glaze-blue); }
+  .badge-green { background: #ddf0e5; color: var(--glaze-green); }
+  .badge-bisque { background: #faecd4; color: #8a6030; }
+
+  /* ── DASHBOARD STATS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.3rem;
+    box-shadow: var(--shadow);
+    border-left: 3.5px solid var(--clay-light);
+  }
+  .stat-card.highlight { border-left-color: var(--clay); }
+  .stat-card.green { border-left-color: var(--glaze-green); }
+  .stat-card.red { border-left-color: #e05c5c; }
+  .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ash); margin-bottom: 0.4rem; }
+  .stat-value { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; font-weight: 600; color: var(--smoke); line-height: 1; }
+  .stat-sub { font-size: 0.72rem; color: var(--ash); margin-top: 0.3rem; }
+
+  /* ── COST DISPLAY ── */
+  .cost-breakdown {
+    background: var(--sand);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.82rem;
+    display: grid;
+    gap: 0.3rem;
+  }
+  .cost-row { display: flex; justify-content: space-between; gap: 1rem; }
+  .cost-row.total { border-top: 1px solid var(--sand-dark); margin-top: 0.3rem; padding-top: 0.4rem; font-weight: 600; color: var(--clay-dark); }
+  .cost-row.price { color: var(--glaze-green); font-weight: 600; font-size: 0.9rem; }
+
+  /* ── QUOTE RESULT ── */
+  .quote-result {
+    background: linear-gradient(135deg, var(--sand) 0%, var(--sand-dark) 100%);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+    border: 1.5px solid var(--clay-light);
+  }
+  .quote-result .qlabel { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ash); }
+  .quote-result .qprice { font-family: 'Cormorant Garamond', serif; font-size: 2.8rem; color: var(--clay-dark); font-weight: 600; margin: 0.2rem 0; }
+  .quote-result .qsub { font-size: 0.8rem; color: var(--ash); }
+
+  /* ── MISC ── */
+  .section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; color: var(--clay-dark); margin-bottom: 0.3rem; }
+  .section-sub { font-size: 0.82rem; color: var(--ash); margin-bottom: 1.5rem; }
+  .divider { border: none; border-top: 1px solid var(--sand-dark); margin: 1.2rem 0; }
+  .empty-state { text-align: center; padding: 2.5rem; color: var(--ash); font-size: 0.88rem; }
+  .empty-state .ei { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.4; }
+  .inline-calc { font-size: 0.75rem; color: var(--ash); margin-top: 0.2rem; font-style: italic; }
+  .alert { padding: 0.7rem 1rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 1rem; }
+  .alert-success { background: #e6f4ea; color: #2e7d32; border: 1px solid #a5d6a7; }
+  .alert-error { background: #fdecea; color: #c62828; border: 1px solid #ef9a9a; }
+  .flex-end { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+  .month-selector { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .month-selector select { padding: 0.4rem 0.7rem; border: 1.5px solid var(--sand-dark); border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; background: var(--cream); color: var(--smoke); }
+
+  .low-stock { color: #c04444; font-weight: 500; }
+  .ok-stock { color: #3a8a3a; }
+
+  @media (max-width: 600px) {
+    .page { padding: 1rem; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .app-header { padding: 0 1rem; }
+    .app-nav { padding: 0 0.5rem; }
+  }
+
+  /* ── EDIT MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(61,46,37,0.55);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-box {
+    background: var(--cream);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.8rem;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--sand-dark);
+    padding-bottom: 0.8rem;
+  }
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem;
+    color: var(--clay-dark);
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    color: var(--ash);
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+  }
+  .modal-close:hover { background: var(--sand-dark); }
+
+  /* ── INVOICE UPLOAD ── */
+  .invoice-upload-area {
+    border: 2px dashed var(--sand-dark);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition);
+    font-size: 0.82rem;
+    color: var(--ash);
+  }
+  .invoice-upload-area:hover { border-color: var(--clay); background: var(--sand); }
+  .invoice-upload-area.has-file { border-color: var(--glaze-green); background: #f0faf3; color: var(--glaze-green); }
+  .invoice-thumb { max-width: 100%; max-height: 120px; border-radius: 6px; margin-top: 0.5rem; object-fit: contain; }
+  .invoice-doc-icon { font-size: 2rem; margin-bottom: 0.3rem; }
+
+
+  /* ── SETUP OVERLAY ── */
+  .setup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(61,46,37,0.85);
+    z-index: 5000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .setup-box {
+    background: var(--cream);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  }
+  .setup-logo { font-family: 'Cormorant Garamond',serif; font-size:2rem; color:var(--clay-dark); margin-bottom:0.3rem; }
+  .setup-logo span { color:var(--clay); font-style:italic; }
+  .setup-subtitle { font-size:0.85rem; color:var(--ash); margin-bottom:1.8rem; }
+  .setup-step { display:flex; align-items:flex-start; gap:0.8rem; margin-bottom:1rem; }
+  .setup-num { background:var(--clay); color:#fff; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:700; flex-shrink:0; margin-top:0.1rem; }
+  .setup-field { margin-bottom:0.75rem; }
+  .setup-field label { display:block; font-size:0.72rem; font-weight:500; text-transform:uppercase; letter-spacing:0.07em; color:var(--ash); margin-bottom:0.3rem; }
+  .setup-field input { width:100%; border:1.5px solid var(--sand-dark); border-radius:6px; padding:0.5rem 0.7rem; font-family:'DM Sans',sans-serif; font-size:0.88rem; background:var(--white); color:var(--smoke); }
+  .setup-field input:focus { outline:none; border-color:var(--clay); }
+  /* ── RECONNECT BAR ── */
+  .reconnect-bar {
+    display: none;
+    background: var(--clay-dark);
+    color: var(--sand);
+    padding: 0.6rem 2rem;
+    font-size: 0.82rem;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .reconnect-bar .rb-msg { flex:1; }
+  .sync-indicator {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 0.18rem 0.6rem;
+    border-radius: 20px;
+    margin-left: 0.5rem;
+    background: #e6f4ea;
+    color: #2e7d32;
+    vertical-align: middle;
+  }
+  .sync-indicator.syncing { background: #fff8e1; color: #f57c00; }
+  .sync-indicator.error   { background: #fdecea; color: #c62828; }
+
+</style>
+</head>
+<body>
+<!-- ══════════════ SETUP OVERLAY ══════════════ -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-box">
+    <div class="setup-logo">Klay <span>Ceramics</span></div>
+    <div class="setup-subtitle">Connect your Google Sheet to sync data across all devices</div>
+
+    <div class="setup-field">
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="clientIdInput" placeholder="xxxxxxx.apps.googleusercontent.com">
+    </div>
+    <div class="setup-field">
+      <label>Google Sheet ID</label>
+      <input type="text" id="sheetIdInput" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+    </div>
+    <div class="setup-field">
+      <label>API Key</label>
+      <input type="text" id="apiKeyInput" placeholder="AIzaSy…">
+    </div>
+
+    <div style="margin-top:1.2rem;">
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:0.7rem;" onclick="requestGoogleToken()">
+        🔐 Connect &amp; Sign in with Google
+      </button>
+    </div>
+    <p style="font-size:0.75rem;color:var(--ash);margin-top:1rem;text-align:center;">
+      See the setup instructions PDF for how to get these credentials. Your data stays in your own Google Sheet.
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════ RECONNECT BAR ══════════════ -->
+<div class="reconnect-bar" id="reconnectBar">
+  <span class="rb-msg">☁️ Sign in to sync with Google Sheets</span>
+  <button class="btn btn-secondary btn-sm" onclick="reconnectGoogle()" id="signinBtn">Sign In</button>
+  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('reconnectBar').style.display='none'">Use offline</button>
+</div>
+
+
+<header class="app-header">
+  <div class="logo">Klay <span>Ceramics</span></div>
+  <div style="display:flex;align-items:center;gap:0.7rem;margin-left:auto;">
+    <span class="sync-indicator" id="syncIndicator" style="display:none;">✓ Synced</span>
+    <div class="header-month" id="headerDate"></div>
+  </div>
+</header>
+
+<nav class="app-nav">
+  <button class="nav-btn active" onclick="showPage('dashboard')">Dashboard</button>
+  <button class="nav-btn" onclick="showPage('costs')">Cost Lookup</button>
+  <button class="nav-btn" onclick="showPage('products')">Products</button>
+  <button class="nav-btn" onclick="showPage('sales')">Sales</button>
+  <button class="nav-btn" onclick="showPage('expenses')">Expenses</button>
+  <button class="nav-btn" onclick="showPage('stock')">Stock Log</button>
+  <button class="nav-btn" onclick="showPage('quote')">Quote Estimator</button>
+  <button class="nav-btn" onclick="showPage('float')">💵 Cash Float</button>
+</nav>
+
+<div class="app-body">
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div class="page active" id="page-dashboard">
+  <div class="section-title">Dashboard</div>
+  <div class="section-sub" id="dashSubtitle">Monthly overview for Klay Ceramics</div>
+  
+  <div class="month-selector">
+    <label style="font-size:0.78rem;color:var(--ash);text-transform:uppercase;letter-spacing:0.06em;">View Month</label>
+    <select id="dashMonthSelect" onchange="renderDashboard()"></select>
+    <button class="btn btn-secondary btn-sm" onclick="saveMonthSnapshot()">📸 Save Snapshot</button>
+  </div>
+
+  <div class="stats-grid" id="dashStats"></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;flex-wrap:wrap;">
+    <div class="card">
+      <div class="card-title">Revenue by Stream</div>
+      <div id="dashStreams"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Saved Monthly Snapshots</div>
+      <div id="dashSnapshots"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1.5rem;">
+    <div class="card-title" style="display:flex;align-items:center;gap:0.6rem;">
+      📊 All-Time Summary
+      <span style="font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--ash);letter-spacing:0.04em;">from first entry to today</span>
+    </div>
+    <div id="dashAllTime"></div>
+  </div>
+</div>
+
+<!-- ══════════════ COST LOOKUP ══════════════ -->
+<div class="page" id="page-costs">
+  <div class="section-title">Cost Lookup</div>
+  <div class="section-sub">Base costs used to calculate product pricing across the studio.</div>
+
+  <div class="card">
+    <div class="card-title">Edit Cost Rates</div>
+    <div class="form-grid wide">
+      <div class="form-group">
+        <label>White Clay — Cost per gram (USD)</label>
+        <input type="number" id="c_clay_white" step="0.0001" placeholder="0.0050" oninput="saveCosts()">
+      </div>
+      <div class="form-group">
+        <label>Terracotta — Cost per gram (USD)</label>
+        <input type="number" id="c_clay_terra" step="0.0001" placeholder="0.0050" oninput="saveCosts()">
+      </div>
+      <div class="form-group">
+        <label>Cost per kg of Plaster (USD)</label>
+        <input type="number" id="c_plaster" step="0.01" placeholder="50.00" oninput="saveCosts()">
+      </div>
+      <div class="form-group">
+        <label>Labour Cost per Piece (USD)</label>
+        <input type="number" id="c_labour" step="0.01" placeholder="25.00" oninput="saveCosts()">
+      </div>
+      <div class="form-group">
+        <label>Bisque Fire Total Cost (USD)</label>
+        <input type="number" id="c_bisque" step="0.01" placeholder="120.00" oninput="saveCosts()">
+      </div>
+      <div class="form-group">
+        <label>Glaze Fire Total Cost (USD)</label>
+        <input type="number" id="c_glaze_fire" step="0.01" placeholder="120.00" oninput="saveCosts()">
+      </div>
+      <div class="form-group">
+        <label>Cost per gram of Glaze (USD)</label>
+        <input type="number" id="c_glaze_g" step="0.0001" placeholder="0.0020" oninput="saveCosts()">
+      </div>
+    </div>
+    <p class="inline-calc">All costs auto-save as you type. Used in product calculations throughout the app.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Current Rates Summary</div>
+    <div id="costsSummary" class="cost-breakdown"></div>
+  </div>
+</div>
+
+<!-- ══════════════ PRODUCTS ══════════════ -->
+<div class="page" id="page-products">
+  <div class="section-title">Product Catalogue</div>
+  <div class="section-sub">Manage shop stock and pottery painting pieces with full cost breakdowns.</div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchProductTab('shop')">🏺 Shop Stock</button>
+    <button class="tab-btn" onclick="switchProductTab('pp')">🎨 Pottery Painting</button>
+  </div>
+
+  <!-- Shop Stock Tab -->
+  <div class="tab-pane active" id="ptab-shop">
+    <div class="card">
+      <div class="card-title">Add Shop Stock Product</div>
+      <div class="form-grid wide" id="shopProductForm">
+        <div class="form-group"><label>Product Name</label><input type="text" id="sp_name" placeholder="e.g. Medium Bowl"></div>
+        <div class="form-group"><label>Clay Type</label><select id="sp_clay_type" onchange="calcShopPreview()"><option value="white">White Clay</option><option value="terra">Terracotta</option></select></div>
+        <div class="form-group"><label>Clay Weight (g)</label><input type="number" id="sp_clay" step="1" oninput="calcShopPreview()"></div>
+        <div class="form-group"><label>Plaster Weight (g)</label><input type="number" id="sp_plaster" step="1" oninput="calcShopPreview()"></div>
+        <div class="form-group"><label>Glaze Weight (g)</label><input type="number" id="sp_glaze" step="1" oninput="calcShopPreview()"></div>
+        <div class="form-group"><label>Bisque Kiln Capacity (items)</label><input type="number" id="sp_bisque_cap" step="1" placeholder="e.g. 30" oninput="calcShopPreview()"></div>
+        <div class="form-group"><label>Glaze Kiln Capacity (items)</label><input type="number" id="sp_glaze_cap" step="1" placeholder="e.g. 20" oninput="calcShopPreview()"></div>
+        <div class="form-group"><label>Markup %</label><input type="number" id="sp_markup" step="1" value="100" oninput="calcShopPreview()"></div>
+        <div class="form-group"><label>Initial Stock Qty</label><input type="number" id="sp_qty" step="1" value="0"></div>
+      </div>
+      <div id="shopPreview" class="cost-breakdown" style="margin-bottom:1rem;display:none;"></div>
+      <div class="flex-end">
+        <button class="btn btn-primary" onclick="addProduct('shop')">+ Add to Catalogue</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Shop Stock Catalogue</div>
+      <div id="shopCatalogue"></div>
+    </div>
+  </div>
+
+  <!-- Pottery Painting Tab -->
+  <div class="tab-pane" id="ptab-pp">
+    <div class="card">
+      <div class="card-title">Add Pottery Painting Piece</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Product Name</label><input type="text" id="pp_name" placeholder="e.g. Small Mug"></div>
+        <div class="form-group"><label>Clay Type</label><select id="pp_clay_type" onchange="calcPPPreview()"><option value="white">White Clay</option><option value="terra">Terracotta</option></select></div>
+        <div class="form-group"><label>Clay Weight (g)</label><input type="number" id="pp_clay" step="1" oninput="calcPPPreview()"></div>
+        <div class="form-group"><label>Plaster Weight (g)</label><input type="number" id="pp_plaster" step="1" oninput="calcPPPreview()"></div>
+        <div class="form-group"><label>Glaze Weight (g)</label><input type="number" id="pp_glaze" step="1" oninput="calcPPPreview()"></div>
+        <div class="form-group"><label>Bisque Kiln Capacity (items)</label><input type="number" id="pp_bisque_cap" step="1" placeholder="e.g. 40" oninput="calcPPPreview()"></div>
+        <div class="form-group"><label>Glaze Kiln Capacity (items)</label><input type="number" id="pp_glaze_cap" step="1" placeholder="e.g. 25" oninput="calcPPPreview()"></div>
+        <div class="form-group"><label>Markup %</label><input type="number" id="pp_markup" step="1" value="100" oninput="calcPPPreview()"></div>
+        <div class="form-group"><label>Initial Stock Qty</label><input type="number" id="pp_qty" step="1" value="0"></div>
+      </div>
+      <div id="ppPreview" class="cost-breakdown" style="margin-bottom:1rem;display:none;"></div>
+      <div class="flex-end">
+        <button class="btn btn-primary" onclick="addProduct('pp')">+ Add to Catalogue</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pottery Painting Catalogue</div>
+      <div id="ppCatalogue"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SALES ══════════════ -->
+<div class="page" id="page-sales">
+  <div class="section-title">Sales Tracker</div>
+  <div class="section-sub">Record all sales across all revenue streams.</div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchSalesTab('instore')">🏪 In-Store</button>
+    <button class="tab-btn" onclick="switchSalesTab('pottery')">🎨 Pottery Painting</button>
+    <button class="tab-btn" onclick="switchSalesTab('workshop')">🧑‍🎨 Workshops</button>
+    <button class="tab-btn" onclick="switchSalesTab('wholesale')">📦 Wholesale</button>
+    <button class="tab-btn" onclick="switchSalesTab('custom')">✏️ Custom</button>
+    <button class="tab-btn" onclick="switchSalesTab('classes')">🎓 Classes</button>
+  </div>
+
+  <div class="tab-pane active" id="stab-instore">
+    <div class="card">
+      <div class="card-title">New In-Store Sale</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="is_date"></div>
+        <div class="form-group"><label>Product</label><select id="is_product" onchange="fillInstorePrice()"><option value="">— Select —</option></select></div>
+        <div class="form-group"><label>Description / Notes</label><input type="text" id="is_desc"></div>
+        <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="is_price" step="0.01" oninput="calcSaleTotal('is')"></div>
+        <div class="form-group"><label>Quantity</label><input type="number" id="is_qty" step="1" value="1" oninput="calcSaleTotal('is')"></div>
+        <div class="form-group"><label>Discount (USD)</label><input type="number" id="is_disc" step="0.01" value="0" oninput="calcSaleTotal('is')"></div>
+        <div class="form-group"><label>Total (auto)</label><input type="text" id="is_total" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group"><label>Profit (auto)</label><input type="text" id="is_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('instore')">Record Sale</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">In-Store Sales Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="filter-instore" onchange="renderSalesLog('instore')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('instore')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="slog-instore"></div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="stab-pottery">
+    <div class="card">
+      <div class="card-title">New Pottery Painting Sale</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="pp_date"></div>
+        <div class="form-group"><label>Product</label><select id="pp_product" onchange="fillPPPrice()"><option value="">— Select —</option></select></div>
+        <div class="form-group"><label>Description / Notes</label><input type="text" id="pp_desc"></div>
+        <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="pp_price" step="0.01" oninput="calcSaleTotal('pp')"></div>
+        <div class="form-group"><label>Quantity</label><input type="number" id="pp_qty2" step="1" value="1" oninput="calcSaleTotal('pp')"></div>
+        <div class="form-group"><label>Discount (USD)</label><input type="number" id="pp_disc" step="0.01" value="0" oninput="calcSaleTotal('pp')"></div>
+        <div class="form-group"><label>Total (auto)</label><input type="text" id="pp_total" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('pottery')">Record Sale</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Pottery Painting Sales Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="filter-pottery" onchange="renderSalesLog('pottery')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('pottery')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="slog-pottery"></div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="stab-workshop">
+    <div class="card">
+      <div class="card-title">New Workshop Sale</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="ws_date"></div>
+        <div class="form-group"><label>Workshop Name / Category</label><input type="text" id="ws_cat"></div>
+        <div class="form-group"><label>Description</label><input type="text" id="ws_desc"></div>
+        <div class="form-group"><label>Price per Person (USD)</label><input type="number" id="ws_price" step="0.01" oninput="calcSaleTotal('ws')"></div>
+        <div class="form-group"><label>Cost per Person (USD)</label><input type="number" id="ws_cost" step="0.01" value="0" oninput="calcSaleTotal('ws')"></div>
+        <div class="form-group"><label>Participants</label><input type="number" id="ws_qty" step="1" value="1" oninput="calcSaleTotal('ws')"></div>
+        <div class="form-group"><label>Discount (USD)</label><input type="number" id="ws_disc" step="0.01" value="0" oninput="calcSaleTotal('ws')"></div>
+        <div class="form-group"><label>Total (auto)</label><input type="text" id="ws_total" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group"><label>Profit (auto)</label><input type="text" id="ws_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="ws_notes"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('workshop')">Record Sale</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Workshop Sales Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="filter-workshop" onchange="renderSalesLog('workshop')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('workshop')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="slog-workshop"></div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="stab-wholesale">
+    <div class="card">
+      <div class="card-title">New Wholesale Order</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="wh_date"></div>
+        <div class="form-group"><label>Client / Stockist</label><input type="text" id="wh_cat"></div>
+        <div class="form-group"><label>Product (optional)</label><select id="wh_product" onchange="fillWholesaleFromProduct()"><option value="">— Select or enter manually —</option></select></div>
+        <div class="form-group"><label>Product Description</label><input type="text" id="wh_desc"></div>
+        <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="wh_price" step="0.01" oninput="calcSaleTotal('wh')"></div>
+        <div class="form-group"><label>Unit Cost (USD, auto or manual)</label><input type="number" id="wh_cost" step="0.01" value="0" oninput="calcSaleTotal('wh')"></div>
+        <div class="form-group"><label>Quantity</label><input type="number" id="wh_qty" step="1" value="1" oninput="calcSaleTotal('wh')"></div>
+        <div class="form-group"><label>Discount (USD)</label><input type="number" id="wh_disc" step="0.01" value="0" oninput="calcSaleTotal('wh')"></div>
+        <div class="form-group"><label>Total (auto)</label><input type="text" id="wh_total" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group"><label>Profit (auto)</label><input type="text" id="wh_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="wh_notes"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('wholesale')">Record Sale</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Wholesale Sales Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="filter-wholesale" onchange="renderSalesLog('wholesale')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('wholesale')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="slog-wholesale"></div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="stab-custom">
+    <div class="card">
+      <div class="card-title">New Custom Order</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="cu_date"></div>
+        <div class="form-group"><label>Client</label><input type="text" id="cu_cat"></div>
+        <div class="form-group"><label>Product Description</label><input type="text" id="cu_desc"></div>
+        <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="cu_price" step="0.01" oninput="calcSaleTotal('cu')"></div>
+        <div class="form-group"><label>Quantity</label><input type="number" id="cu_qty" step="1" value="1" oninput="calcSaleTotal('cu')"></div>
+        <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="cu_cost" step="0.01" value="0" oninput="calcSaleTotal('cu')"></div>
+        <div class="form-group"><label>Discount (USD)</label><input type="number" id="cu_disc" step="0.01" value="0" oninput="calcSaleTotal('cu')"></div>
+        <div class="form-group"><label>Total (auto)</label><input type="text" id="cu_total" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group"><label>Profit (auto)</label><input type="text" id="cu_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="cu_notes"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('custom')">Record Sale</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Custom Orders Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="filter-custom" onchange="renderSalesLog('custom')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('custom')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="slog-custom"></div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="stab-classes">
+    <div class="card">
+      <div class="card-title">New Class Sale</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="cl_date"></div>
+        <div class="form-group"><label>Client / Group</label><input type="text" id="cl_cat"></div>
+        <div class="form-group"><label>Class Description</label><input type="text" id="cl_desc"></div>
+        <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="cl_price" step="0.01" oninput="calcSaleTotal('cl')"></div>
+        <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="cl_cost" step="0.01" value="0" oninput="calcSaleTotal('cl')"></div>
+        <div class="form-group"><label>Quantity / Participants</label><input type="number" id="cl_qty" step="1" value="1" oninput="calcSaleTotal('cl')"></div>
+        <div class="form-group"><label>Discount (USD)</label><input type="number" id="cl_disc" step="0.01" value="0" oninput="calcSaleTotal('cl')"></div>
+        <div class="form-group"><label>Total (auto)</label><input type="text" id="cl_total" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group"><label>Profit (auto)</label><input type="text" id="cl_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="cl_notes"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('classes')">Record Sale</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Classes Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="filter-classes" onchange="renderSalesLog('classes')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('classes')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="slog-classes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ EXPENSES ══════════════ -->
+<div class="page" id="page-expenses">
+  <div class="section-title">Overhead Expenses</div>
+  <div class="section-sub">Track monthly running costs for the studio.</div>
+
+  <div class="card">
+    <div class="card-title">Add Expense</div>
+    <div class="form-grid wide">
+      <div class="form-group"><label>Date</label><input type="date" id="exp_date"></div>
+      <div class="form-group"><label>Category</label>
+        <select id="exp_cat">
+          <option>Rent</option><option>Utilities (Zesa)</option><option>Water</option>
+          <option>Wages</option><option>Materials</option><option>Equipment</option>
+          <option>Marketing</option><option>Transport</option><option>Insurance</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Description</label><input type="text" id="exp_desc"></div>
+      <div class="form-group"><label>Amount (USD)</label><input type="number" id="exp_amount" step="0.01"></div>
+    </div>
+    <div class="form-group" style="margin-top:0.75rem;">
+      <label>Invoice / Receipt (optional)</label>
+      <div class="invoice-upload-area" id="invoiceDropArea" onclick="document.getElementById('exp_invoice').click()" ondragover="event.preventDefault();this.style.borderColor='var(--clay)'" ondragleave="this.style.borderColor=''" ondrop="handleInvoiceDrop(event)">
+        <div id="invoicePreviewArea">
+          <div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div>
+          <div>Click to attach invoice or receipt</div>
+          <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>
+        </div>
+      </div>
+      <input type="file" id="exp_invoice" accept="image/*,application/pdf" style="display:none" onchange="handleInvoiceSelect(this)">
+    </div>
+    <div class="flex-end"><button class="btn btn-primary" onclick="addExpense()">Add Expense</button></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+      <div class="card-title" style="margin:0;border:none;padding:0;">Expense Log</div>
+      <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <label style="font-size:0.78rem;color:var(--ash);">Filter:</label>
+        <select id="expMonthFilter" onchange="renderExpenses()" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+        <button class="btn btn-secondary btn-sm" onclick="exportExpensesExcel()">⬇ Export Excel</button>
+      </div>
+    </div>
+    <div id="expenseLog"></div>
+  </div>
+</div>
+
+<!-- ══════════════ STOCK LOG ══════════════ -->
+<div class="page" id="page-stock">
+  <div class="section-title">Stock Log</div>
+  <div class="section-sub">Current inventory levels, auto-updated when sales are recorded.</div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchStockTab('shop')">🏺 Shop Stock</button>
+    <button class="tab-btn" onclick="switchStockTab('pp')">🎨 Pottery Painting</button>
+  </div>
+
+  <div class="tab-pane active" id="sktab-shop">
+    <div class="card">
+      <div class="card-title">Shop Stock Levels</div>
+      <div id="stockShop"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Manual Stock Adjustment</div>
+      <div class="form-row">
+        <div class="form-group"><label>Product</label><select id="adj_shop_product"></select></div>
+        <div class="form-group"><label>Adjust Qty (+ or -)</label><input type="number" id="adj_shop_qty" step="1" value="0"></div>
+        <div class="form-group"><label>Reason</label><input type="text" id="adj_shop_reason" placeholder="e.g. New batch, breakage"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="adjustStock('shop')">Apply Adjustment</button></div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="sktab-pp">
+    <div class="card">
+      <div class="card-title">Pottery Painting Stock Levels</div>
+      <div id="stockPP"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Manual Stock Adjustment</div>
+      <div class="form-row">
+        <div class="form-group"><label>Product</label><select id="adj_pp_product"></select></div>
+        <div class="form-group"><label>Adjust Qty (+ or -)</label><input type="number" id="adj_pp_qty" step="1" value="0"></div>
+        <div class="form-group"><label>Reason</label><input type="text" id="adj_pp_reason" placeholder="e.g. New batch, breakage"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="adjustStock('pp')">Apply Adjustment</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ QUOTE ESTIMATOR ══════════════ -->
+<div class="page" id="page-quote">
+  <div class="section-title">Custom Quote Estimator</div>
+  <div class="section-sub">Estimate pricing for bespoke pieces using finished dimensions.</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div>
+      <div class="card">
+        <div class="card-title">Piece Dimensions & Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Clay Type</label>
+            <select id="q_clay_type" onchange="calcQuote()"><option value="white">White Clay</option><option value="terra">Terracotta</option></select>
+          </div>
+          <div class="form-group">
+            <label>Shape</label>
+            <select id="q_shape" onchange="calcQuote()">
+              <option value="cylinder">Cylinder (mug, vase, cup)</option>
+              <option value="sphere">Sphere / Bowl (hemisphere)</option>
+              <option value="slab">Slab / Tile / Plate (flat)</option>
+              <option value="custom">Custom (enter weight directly)</option>
+            </select>
+          </div>
+          <div class="form-group" id="q_dim_d_wrap">
+            <label>Diameter (cm)</label>
+            <input type="number" id="q_diameter" step="0.5" value="10" oninput="calcQuote()">
+          </div>
+          <div class="form-group" id="q_dim_h_wrap">
+            <label>Height (cm)</label>
+            <input type="number" id="q_height" step="0.5" value="12" oninput="calcQuote()">
+          </div>
+          <div class="form-group" id="q_dim_l_wrap" style="display:none">
+            <label>Length (cm)</label>
+            <input type="number" id="q_length" step="0.5" value="20" oninput="calcQuote()">
+          </div>
+          <div class="form-group" id="q_dim_w_wrap" style="display:none">
+            <label>Width (cm)</label>
+            <input type="number" id="q_width" step="0.5" value="15" oninput="calcQuote()">
+          </div>
+          <div class="form-group" id="q_dim_t_wrap" style="display:none">
+            <label>Thickness (cm)</label>
+            <input type="number" id="q_thickness" step="0.1" value="1" oninput="calcQuote()">
+          </div>
+          <div class="form-group" id="q_custom_weight_wrap" style="display:none">
+            <label>Clay Weight (g)</label>
+            <input type="number" id="q_custom_weight" step="10" oninput="calcQuote()">
+          </div>
+          <div class="form-group">
+            <label>Wall Thickness (cm)</label>
+            <input type="number" id="q_wall" step="0.1" value="0.8" oninput="calcQuote()" id="q_wall">
+          </div>
+          <div class="form-group">
+            <label>Glaze Weight (g)</label>
+            <input type="number" id="q_glaze_g" step="5" value="30" oninput="calcQuote()">
+          </div>
+          <div class="form-group">
+            <label>Firing</label>
+            <select id="q_firing" onchange="calcQuote()">
+              <option value="both">Bisque + Glaze</option>
+              <option value="bisque">Bisque Only</option>
+              <option value="glaze">Glaze Only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Kiln Capacity (items)</label>
+            <input type="number" id="q_kiln_cap" step="1" value="20" oninput="calcQuote()">
+          </div>
+          <div class="form-group">
+            <label>Complexity (1×–3×)</label>
+            <input type="number" id="q_complexity" step="0.1" value="1" min="1" max="3" oninput="calcQuote()">
+            <span class="inline-calc">1 = simple, 2 = moderate, 3 = highly detailed</span>
+          </div>
+          <div class="form-group">
+            <label>Markup %</label>
+            <input type="number" id="q_markup" step="5" value="120" oninput="calcQuote()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="quote-result" id="quoteResult">
+        <div class="qlabel">Estimated Selling Price</div>
+        <div class="qprice" id="qPrice">USD —</div>
+        <div class="qsub" id="qSub">Fill in dimensions to calculate</div>
+      </div>
+
+      <div class="card" style="margin-top:1rem;">
+        <div class="card-title">Cost Breakdown</div>
+        <div id="quoteBreakdown" class="cost-breakdown"></div>
+      </div>
+
+      <div class="card" style="margin-top:1rem;background:var(--sand);">
+        <div class="card-title" style="font-size:1rem;">💡 How Clay Weight is Estimated</div>
+        <p style="font-size:0.8rem;color:var(--ash);line-height:1.6;">
+          Clay volume is calculated from the outer dimensions minus the hollow interior (based on wall thickness). 
+          Clay density is assumed at <strong>1.9 g/cm³</strong> (typical for earthenware / stoneware). 
+          Shrinkage factor of <strong>12%</strong> is added (wet clay shrinks when fired). 
+          For custom shapes, switch to "Custom" mode to enter weight directly.
+        </p>
+        <div id="qDimNote" style="margin-top:0.7rem;font-size:0.82rem;color:var(--earth);font-weight:500;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ EDIT PRODUCT MODAL ══════════════ -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Edit Product</div>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <input type="hidden" id="edit_type">
+    <input type="hidden" id="edit_id">
+    <div class="form-grid wide">
+      <div class="form-group"><label>Product Name</label><input type="text" id="edit_name"></div>
+      <div class="form-group"><label>Clay Type</label><select id="edit_clay_type" onchange="calcEditPreview()"><option value="white">White Clay</option><option value="terra">Terracotta</option></select></div>
+      <div class="form-group"><label>Clay Weight (g)</label><input type="number" id="edit_clay" step="1" oninput="calcEditPreview()"></div>
+      <div class="form-group"><label>Plaster Weight (g)</label><input type="number" id="edit_plaster" step="1" oninput="calcEditPreview()"></div>
+      <div class="form-group"><label>Glaze Weight (g)</label><input type="number" id="edit_glaze" step="1" oninput="calcEditPreview()"></div>
+      <div class="form-group"><label>Bisque Kiln Capacity (items)</label><input type="number" id="edit_bisque_cap" step="1" oninput="calcEditPreview()"></div>
+      <div class="form-group"><label>Glaze Kiln Capacity (items)</label><input type="number" id="edit_glaze_cap" step="1" oninput="calcEditPreview()"></div>
+      <div class="form-group"><label>Markup %</label><input type="number" id="edit_markup" step="1" oninput="calcEditPreview()"></div>
+      <div class="form-group"><label>Stock Qty</label><input type="number" id="edit_qty" step="1"></div>
+    </div>
+    <div id="editPreview" class="cost-breakdown" style="margin: 1rem 0;"></div>
+    <div class="flex-end">
+      <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditProduct()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ CASH FLOAT ══════════════ -->
+<div class="page" id="page-float">
+  <div class="section-title">Cash Float</div>
+  <div class="section-sub">Track cash going in and out of the studio float. Balance updates automatically.</div>
+
+  <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:1.5rem;">
+    <div class="stat-card highlight" style="grid-column:span 1;">
+      <div class="stat-label">Current Float Balance</div>
+      <div class="stat-value" id="floatBalance">USD 0.00</div>
+      <div class="stat-sub" id="floatTxCount">0 transactions</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Total Cash In</div>
+      <div class="stat-value" id="floatTotalIn">USD 0.00</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Total Cash Out</div>
+      <div class="stat-value" id="floatTotalOut">USD 0.00</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Log a Transaction</div>
+    <div class="form-grid wide">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="fl_date">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="fl_type" onchange="updateFloatTypeStyle()">
+          <option value="in">💵 Cash In</option>
+          <option value="out">💸 Cash Out</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Amount (USD)</label>
+        <input type="number" id="fl_amount" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Description / Reason</label>
+        <input type="text" id="fl_desc" placeholder="e.g. Opening float, petty cash for supplies…">
+      </div>
+    </div>
+    <div class="flex-end">
+      <button class="btn btn-primary" onclick="addFloatTx()">Log Transaction</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+      <div class="card-title" style="margin:0;border:none;padding:0;">Transaction Log</div>
+      <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <select id="floatMonthFilter" onchange="renderFloat()" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+        <button class="btn btn-secondary btn-sm" onclick="exportFloatExcel()">⬇ Export Excel</button>
+      </div>
+    </div>
+    <div id="floatLog"></div>
+  </div>
+</div>
+
+</div><!-- end app-body -->
+
+<script>
+
+// ══════════════════════════════════════════
+//  STATE — all persisted to localStorage
+// ══════════════════════════════════════════
+const KEYS = {
+  costs:    'klay_costs',
+  products: 'klay_products',
+  sales:    'klay_sales',
+  expenses: 'klay_expenses',
+  snapshots:'klay_snapshots',
+  float:    'klay_float',
+};
+
+// ══════════════════════════════════════════
+//  GOOGLE SHEETS STORAGE LAYER
+// ══════════════════════════════════════════
+let SHEET_ID = localStorage.getItem('klay_sheet_id') || '';
+let API_KEY   = localStorage.getItem('klay_api_key')  || '';
+let OAUTH_TOKEN = null;  // set after Google sign-in
+let _cache = {};         // in-memory cache so UI stays fast
+let _dirty = {};         // tracks which keys need syncing
+let _syncTimer = null;
+
+// Tab name mapping: localStorage key → Sheet tab name
+const TAB_MAP = {
+  klay_costs:    'Costs',
+  klay_products: 'Products',
+  klay_sales:    'Sales',
+  klay_expenses: 'Expenses',
+  klay_snapshots:'Snapshots',
+  klay_float:    'Float',
+};
+
+function load(key) {
+  // Return from cache (populated on app init from Sheets)
+  if (_cache[key] !== undefined) return _cache[key];
+  // Fallback to localStorage while loading
+  try { return JSON.parse(localStorage.getItem(key)) || null; } catch { return null; }
+}
+
+function save(key, data) {
+  _cache[key] = data;
+  // Also write to localStorage as backup
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+  // Debounce writes to Sheets (batch writes every 2 seconds)
+  _dirty[key] = true;
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(flushToSheets, 2000);
+}
+
+async function flushToSheets() {
+  if (!SHEET_ID || !OAUTH_TOKEN) return;
+  const keys = Object.keys(_dirty);
+  if (!keys.length) return;
+  _dirty = {};
+  for (const key of keys) {
+    await writeSheetTab(key, _cache[key]);
+  }
+}
+
+async function writeSheetTab(key, data) {
+  const tab = TAB_MAP[key];
+  if (!tab || !SHEET_ID || !OAUTH_TOKEN) return;
+  const json = JSON.stringify(data);
+  // Store as single cell A1 in each named sheet tab
+  const range = encodeURIComponent(`${tab}!A1`);
+  try {
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=RAW`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${OAUTH_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [[json]] }),
+      }
+    );
+  } catch(e) {
+    console.error('Sheet write error:', key, e);
+  }
+}
+
+async function readAllFromSheets() {
+  if (!SHEET_ID || !OAUTH_TOKEN) return false;
+  try {
+    const tabs = Object.values(TAB_MAP).join(',');
+    // Read all tabs in one batch request
+    const ranges = Object.values(TAB_MAP).map(t => encodeURIComponent(`${t}!A1`)).join('&ranges=');
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?ranges=${ranges}&key=${API_KEY}`;
+    const resp = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${OAUTH_TOKEN}` }
+    });
+    if (!resp.ok) {
+      console.error('Sheet read failed:', await resp.text());
+      return false;
+    }
+    const data = await resp.json();
+    const keys = Object.keys(TAB_MAP);
+    (data.valueRanges || []).forEach((vr, i) => {
+      const key = keys[i];
+      const cellVal = vr.values?.[0]?.[0];
+      if (cellVal) {
+        try {
+          const parsed = JSON.parse(cellVal);
+          _cache[key] = parsed;
+          localStorage.setItem(key, cellVal); // backup
+        } catch(e) { console.warn('Parse error for', key); }
+      }
+    });
+    return true;
+  } catch(e) {
+    console.error('readAllFromSheets error:', e);
+    return false;
+  }
+}
+
+async function ensureSheetTabs() {
+  if (!SHEET_ID || !OAUTH_TOKEN) return;
+  try {
+    // Get existing sheets
+    const resp = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties.title`,
+      { headers: { 'Authorization': `Bearer ${OAUTH_TOKEN}` } }
+    );
+    const data = await resp.json();
+    const existing = (data.sheets || []).map(s => s.properties.title);
+    const needed = Object.values(TAB_MAP).filter(t => !existing.includes(t));
+    if (!needed.length) return;
+    // Create missing tabs
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OAUTH_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: needed.map(title => ({
+            addSheet: { properties: { title } }
+          }))
+        })
+      }
+    );
+  } catch(e) {
+    console.error('ensureSheetTabs error:', e);
+  }
+}
+
+let COSTS = load(KEYS.costs) || {
+  clay: 0, clayWhite: 0, clayTerra: 0, plaster: 0, labour: 0, bisque: 0, glazeFire: 0, glazeG: 0
+};
+if (!COSTS.clayWhite && COSTS.clay) COSTS.clayWhite = COSTS.clay; // migrate old single clay value
+if (!COSTS.clayTerra) COSTS.clayTerra = 0;
+let PRODUCTS = load(KEYS.products) || { shop: [], pp: [] };
+let SALES = load(KEYS.sales) || { instore: [], pottery: [], workshop: [], wholesale: [], custom: [], classes: [] };
+if (!SALES.custom) SALES.custom = [];
+if (!SALES.classes) SALES.classes = [];
+let EXPENSES = load(KEYS.expenses) || [];
+let SNAPSHOTS = load(KEYS.snapshots) || [];
+let FLOAT = load(KEYS.float) || [];
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+const fmt = (n) => 'USD ' + Number(n || 0).toFixed(2);
+const fmtN = (n) => Number(n || 0).toFixed(2);
+
+function currentYearMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function monthLabel(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  return new Date(y, m-1, 1).toLocaleString('default', {month:'long', year:'numeric'});
+}
+
+function getAllMonths() {
+  const months = new Set();
+  months.add(currentYearMonth());
+  [...SALES.instore, ...SALES.pottery, ...SALES.workshop, ...SALES.wholesale, ...SALES.custom, ...SALES.classes].forEach(s => {
+    if (s.date) months.add(s.date.slice(0,7));
+  });
+  EXPENSES.forEach(e => { if (e.date) months.add(e.date.slice(0,7)); });
+  return [...months].sort().reverse();
+}
+
+function calcProductCost(p) {
+  const c = COSTS;
+  const clayRate   = (p.clayType === 'terra') ? (c.clayTerra || 0) : (c.clayWhite || 0);
+  const clayCost   = (p.clay    || 0) * clayRate;
+  const plasterCost= (p.plaster || 0) * (c.plaster || 0) / 1000 / 90;
+  const labourCost = (c.labour  || 0);
+  const bisqueCost = p.bisqueCap ? (c.bisque    || 0) / p.bisqueCap : 0;
+  const glazeCost  = (p.glaze   || 0) * (c.glazeG  || 0);
+  const glazeFireCost = p.glazeCap  ? (c.glazeFire || 0) / p.glazeCap  : 0;
+  const total = clayCost + plasterCost + labourCost + bisqueCost + glazeCost + glazeFireCost;
+  const markup = p.markup || 100;
+  const sellingPrice = total * (1 + markup / 100);
+  const clayTypeLabel = (p.clayType === 'terra') ? 'Terracotta' : 'White Clay';
+  return { clayCost, plasterCost, labourCost, bisqueCost, glazeCost, glazeFireCost, total, sellingPrice, clayTypeLabel, clayRate };
+}
+
+function showAlert(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  el.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;min-width:240px;box-shadow:var(--shadow-lg)';
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ══════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const btns = document.querySelectorAll('.nav-btn');
+  btns.forEach(b => { if (b.textContent.toLowerCase().includes(id.slice(0,4))) b.classList.add('active'); });
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'stock') { renderStock(); populateStockAdjusts(); }
+  if (id === 'sales') { populateSalesDropdowns(); renderAllSalesLogs(); }
+  if (id === 'costs') renderCostsSummary();
+  if (id === 'products') { renderCatalogue('shop'); renderCatalogue('pp'); }
+  if (id === 'expenses') { populateExpenseMonthFilter(); renderExpenses(); }
+  if (id === 'quote') calcQuote();
+  if (id === 'float') renderFloat();
+}
+
+function switchProductTab(tab) {
+  document.querySelectorAll('[id^="ptab-"]').forEach(t => t.classList.remove('active'));
+  document.getElementById('ptab-' + tab).classList.add('active');
+  document.querySelectorAll('#page-products .tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', (tab === 'shop' && i===0) || (tab === 'pp' && i===1));
+  });
+}
+
+function switchSalesTab(tab) {
+  document.querySelectorAll('[id^="stab-"]').forEach(t => t.classList.remove('active'));
+  document.getElementById('stab-' + tab).classList.add('active');
+  document.querySelectorAll('#page-sales .tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function switchStockTab(tab) {
+  document.querySelectorAll('[id^="sktab-"]').forEach(t => t.classList.remove('active'));
+  document.getElementById('sktab-' + tab).classList.add('active');
+  document.querySelectorAll('#page-stock .tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ══════════════════════════════════════════
+//  COSTS
+// ══════════════════════════════════════════
+function saveCosts() {
+  COSTS = {
+    clayWhite:parseFloat(document.getElementById('c_clay_white').value) || 0,
+    clayTerra:parseFloat(document.getElementById('c_clay_terra').value) || 0,
+    plaster:  parseFloat(document.getElementById('c_plaster').value)    || 0,
+    labour:   parseFloat(document.getElementById('c_labour').value)     || 0,
+    bisque:   parseFloat(document.getElementById('c_bisque').value)     || 0,
+    glazeFire:parseFloat(document.getElementById('c_glaze_fire').value) || 0,
+    glazeG:   parseFloat(document.getElementById('c_glaze_g').value)    || 0,
+  };
+  COSTS.clay = COSTS.clayWhite; // keep legacy compat
+  save(KEYS.costs, COSTS);
+  renderCostsSummary();
+}
+
+function loadCostInputs() {
+  document.getElementById('c_clay_white').value = COSTS.clayWhite  || '';
+  document.getElementById('c_clay_terra').value = COSTS.clayTerra  || '';
+  document.getElementById('c_plaster').value    = COSTS.plaster    || '';
+  document.getElementById('c_labour').value     = COSTS.labour     || '';
+  document.getElementById('c_bisque').value     = COSTS.bisque     || '';
+  document.getElementById('c_glaze_fire').value = COSTS.glazeFire  || '';
+  document.getElementById('c_glaze_g').value    = COSTS.glazeG     || '';
+}
+
+function renderCostsSummary() {
+  const el = document.getElementById('costsSummary');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="cost-row"><span>White Clay (per gram)</span><span>${fmt(COSTS.clayWhite)}</span></div>
+    <div class="cost-row"><span>Terracotta (per gram)</span><span>${fmt(COSTS.clayTerra)}</span></div>
+    <div class="cost-row"><span>Plaster (per kg)</span><span>${fmt(COSTS.plaster)}</span></div>
+    <div class="cost-row"><span>Labour (per piece)</span><span>${fmt(COSTS.labour)}</span></div>
+    <div class="cost-row"><span>Bisque fire (total)</span><span>${fmt(COSTS.bisque)}</span></div>
+    <div class="cost-row"><span>Glaze fire (total)</span><span>${fmt(COSTS.glazeFire)}</span></div>
+    <div class="cost-row"><span>Glaze (per gram)</span><span>${fmt(COSTS.glazeG)}</span></div>
+  `;
+}
+
+// ══════════════════════════════════════════
+//  PRODUCT COST PREVIEW
+// ══════════════════════════════════════════
+function buildPreviewHTML(p) {
+  const c = calcProductCost(p);
+  return `
+    <div class="cost-row"><span>${c.clayTypeLabel||'White Clay'} cost (${p.clay||0}g × ${fmt(c.clayRate||0)}/g)</span><span>${fmt(c.clayCost)}</span></div>
+    <div class="cost-row"><span>Plaster cost (${p.plaster||0}g ÷ 1000 × ${fmt(COSTS.plaster)}/kg ÷ 90 uses)</span><span>${fmt(c.plasterCost)}</span></div>
+    <div class="cost-row"><span>Labour (set rate)</span><span>${fmt(c.labourCost)}</span></div>
+    <div class="cost-row"><span>Bisque fire (${fmt(COSTS.bisque)} ÷ ${p.bisqueCap||'?'} items)</span><span>${fmt(c.bisqueCost)}</span></div>
+    <div class="cost-row"><span>Glaze cost (${p.glaze||0}g × ${fmt(COSTS.glazeG)}/g)</span><span>${fmt(c.glazeCost)}</span></div>
+    <div class="cost-row"><span>Glaze fire (${fmt(COSTS.glazeFire)} ÷ ${p.glazeCap||'?'} items)</span><span>${fmt(c.glazeFireCost)}</span></div>
+    <div class="cost-row total"><span>Total Cost</span><span>${fmt(c.total)}</span></div>
+    <div class="cost-row price"><span>Selling Price (${p.markup||100}% markup)</span><span>${fmt(c.sellingPrice)}</span></div>
+  `;
+}
+
+function calcShopPreview() {
+  const p = {
+    clay:p(      'sp_clay'),plaster:p('sp_plaster'),
+    glaze:p(     'sp_glaze'),bisqueCap:p('sp_bisque_cap'),
+    glazeCap:p(  'sp_glaze_cap'),markup:p('sp_markup'),
+    clayType: document.getElementById('sp_clay_type').value
+  };
+  const el = document.getElementById('shopPreview');
+  el.style.display = 'grid';
+  el.innerHTML = buildPreviewHTML(p);
+}
+
+function calcPPPreview() {
+  const p = {
+    clay:p('pp_clay'),plaster:p('pp_plaster'),
+    glaze:p('pp_glaze'),bisqueCap:p('pp_bisque_cap'),
+    glazeCap:p('pp_glaze_cap'),markup:p('pp_markup'),
+    clayType: document.getElementById('pp_clay_type').value
+  };
+  const el = document.getElementById('ppPreview');
+  el.style.display = 'grid';
+  el.innerHTML = buildPreviewHTML(p);
+}
+
+function p(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+
+// ══════════════════════════════════════════
+//  ADD / REMOVE PRODUCTS
+// ══════════════════════════════════════════
+function addProduct(type) {
+  const prefix = type === 'shop' ? 'sp_' : 'pp_';
+  const name = document.getElementById(prefix+'name').value.trim();
+  if (!name) { showAlert('Please enter a product name.','error'); return; }
+
+  const prod = {
+    id: Date.now(),
+    name,
+    clay:      p(prefix+'clay'),
+    plaster:   p(prefix+'plaster'),
+    glaze:     p(prefix+'glaze'),
+    bisqueCap: p(prefix+'bisque_cap'),
+    glazeCap:  p(prefix+'glaze_cap'),
+    markup:    p(prefix+'markup') || 100,
+    qty:       p(prefix+'qty'),
+    clayType:  document.getElementById(prefix+'clay_type')?.value || 'white',
+  };
+
+  PRODUCTS[type].push(prod);
+  save(KEYS.products, PRODUCTS);
+  renderCatalogue(type);
+  populateSalesDropdowns();
+  populateStockAdjusts();
+
+  // clear form
+  ['name','clay','plaster','glaze','bisque_cap','glaze_cap'].forEach(f => {
+    document.getElementById(prefix+f).value = '';
+  });
+  document.getElementById(prefix+'markup').value = 100;
+  document.getElementById(prefix+'qty').value = 0;
+  document.getElementById(type==='shop'?'shopPreview':'ppPreview').style.display='none';
+  showAlert(`"${name}" added to catalogue.`);
+}
+
+function removeProduct(type, id) {
+  id = Number(id);
+  const prod = PRODUCTS[type].find(p => Number(p.id) === id);
+  if (!prod) { showAlert('Product not found.', 'error'); return; }
+  if (!window.confirm('Remove "' + prod.name + '" from the catalogue?')) return;
+  PRODUCTS[type] = PRODUCTS[type].filter(p => Number(p.id) !== id);
+  save(KEYS.products, PRODUCTS);
+  renderCatalogue(type);
+  populateSalesDropdowns();
+  populateStockAdjusts();
+  showAlert('Product removed.');
+}
+
+function openEditModal(type, id) {
+  const prod = PRODUCTS[type].find(p => Number(p.id) === Number(id));
+  if (!prod) return;
+  document.getElementById('editModal').style.display = 'flex';
+  document.getElementById('edit_type').value = type;
+  document.getElementById('edit_id').value = id;
+  document.getElementById('edit_name').value = prod.name || '';
+  document.getElementById('edit_clay_type').value = prod.clayType || 'white';
+  document.getElementById('edit_clay').value = prod.clay || '';
+  document.getElementById('edit_plaster').value = prod.plaster || '';
+  document.getElementById('edit_glaze').value = prod.glaze || '';
+  document.getElementById('edit_bisque_cap').value = prod.bisqueCap || '';
+  document.getElementById('edit_glaze_cap').value = prod.glazeCap || '';
+  document.getElementById('edit_markup').value = prod.markup || 100;
+  document.getElementById('edit_qty').value = prod.qty || 0;
+  calcEditPreview();
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function ep(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+
+function calcEditPreview() {
+  const tempProd = {
+    clay: ep('edit_clay'), plaster: ep('edit_plaster'), glaze: ep('edit_glaze'),
+    bisqueCap: ep('edit_bisque_cap'), glazeCap: ep('edit_glaze_cap'), markup: ep('edit_markup'),
+    clayType: document.getElementById('edit_clay_type')?.value || 'white'
+  };
+  document.getElementById('editPreview').innerHTML = buildPreviewHTML(tempProd);
+}
+
+function saveEditProduct() {
+  const type = document.getElementById('edit_type').value;
+  const id   = parseInt(document.getElementById('edit_id').value);
+  const prod = PRODUCTS[type].find(p => Number(p.id) === Number(id));
+  if (!prod) return;
+  const name = document.getElementById('edit_name').value.trim();
+  if (!name) { showAlert('Product name cannot be empty.','error'); return; }
+  prod.name      = name;
+  prod.clay      = ep('edit_clay');
+  prod.plaster   = ep('edit_plaster');
+  prod.glaze     = ep('edit_glaze');
+  prod.bisqueCap = ep('edit_bisque_cap');
+  prod.glazeCap  = ep('edit_glaze_cap');
+  prod.markup    = ep('edit_markup') || 100;
+  prod.qty       = ep('edit_qty');
+  prod.clayType  = document.getElementById('edit_clay_type')?.value || 'white';
+  save(KEYS.products, PRODUCTS);
+  renderCatalogue(type);
+  populateSalesDropdowns();
+  closeEditModal();
+  showAlert(`Updated successfully.`);
+}
+
+function renderCatalogue(type) {
+  const el = document.getElementById(type==='shop'?'shopCatalogue':'ppCatalogue');
+  const products = [...PRODUCTS[type]].sort((a,b) => a.name.localeCompare(b.name));
+  if (!products.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">🏺</div>No products yet. Add your first product above.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Product</th><th>Cost</th><th>Selling Price</th><th>Markup</th><th>Stock Qty</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${products.map(prod => {
+          const c = calcProductCost(prod);
+          return `<tr>
+            <td><strong>${prod.name}</strong><br><span class="badge ${prod.clayType==='terra'?'badge-clay':'badge-blue'}" style="margin-top:0.2rem;">${prod.clayType==='terra'?'Terracotta':'White Clay'}</span></td>
+            <td class="num">${fmt(c.total)}</td>
+            <td class="num"><strong>${fmt(c.sellingPrice)}</strong></td>
+            <td class="num">${prod.markup}%</td>
+            <td class="num ${prod.qty <= 3 ? 'low-stock' : 'ok-stock'}">${prod.qty}</td>
+            <td style="display:flex;gap:0.4rem;align-items:center;">
+              <button class="btn btn-ghost btn-sm" onclick="openEditModal('${type}',${prod.id})">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="removeProduct('${type}',${prod.id})">Remove</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════
+//  SALES
+// ══════════════════════════════════════════
+function populateSalesDropdowns() {
+  const isSelect = document.getElementById('is_product');
+  const ppSelect = document.getElementById('pp_product');
+  const whSelect = document.getElementById('wh_product');
+  const adjShop  = document.getElementById('adj_shop_product');
+  const adjPP    = document.getElementById('adj_pp_product');
+
+  [isSelect, adjShop].forEach(sel => {
+    if (!sel) return;
+    const was = sel.value;
+    sel.innerHTML = '<option value="">— Select —</option>' +
+      PRODUCTS.shop.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    sel.value = was;
+  });
+  [ppSelect, adjPP].forEach(sel => {
+    if (!sel) return;
+    const was = sel.value;
+    sel.innerHTML = '<option value="">— Select —</option>' +
+      PRODUCTS.pp.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    sel.value = was;
+  });
+  // Wholesale can pick from either catalogue
+  if (whSelect) {
+    const was = whSelect.value;
+    whSelect.innerHTML = '<option value="">— Select or enter manually —</option>' +
+      '<optgroup label="Shop Stock">' + PRODUCTS.shop.map(p => `<option value="shop:${p.id}">${p.name} (Shop)</option>`).join('') + '</optgroup>' +
+      '<optgroup label="Pottery Painting">' + PRODUCTS.pp.map(p => `<option value="pp:${p.id}">${p.name} (PP)</option>`).join('') + '</optgroup>';
+    whSelect.value = was;
+  }
+}
+
+function fillWholesaleFromProduct() {
+  const sel = document.getElementById('wh_product');
+  const val = sel.value;
+  if (!val) return;
+  const [type, idStr] = val.split(':');
+  const id = parseInt(idStr);
+  const prod = PRODUCTS[type === 'shop' ? 'shop' : 'pp'].find(p => p.id === id);
+  if (!prod) return;
+  const costObj = calcProductCost(prod);
+  document.getElementById('wh_desc').value = prod.name;
+  document.getElementById('wh_cost').value = costObj.total.toFixed(2);
+  calcSaleTotal('wh');
+}
+
+function fillInstorePrice() {
+  const id = parseInt(document.getElementById('is_product').value);
+  const prod = PRODUCTS.shop.find(p => p.id === id);
+  if (prod) {
+    const c = calcProductCost(prod);
+    document.getElementById('is_price').value = fmtN(c.sellingPrice);
+  }
+  calcSaleTotal('is');
+}
+
+function fillPPPrice() {
+  const id = parseInt(document.getElementById('pp_product').value);
+  const prod = PRODUCTS.pp.find(p => p.id === id);
+  if (prod) {
+    const c = calcProductCost(prod);
+    document.getElementById('pp_price').value = fmtN(c.sellingPrice);
+  }
+  calcSaleTotal('pp');
+}
+
+function calcSaleTotal(prefix) {
+  const price = parseFloat(document.getElementById(prefix+'_price')?.value) || 0;
+  const qty   = parseFloat(document.getElementById(prefix+'_qty')?.value || document.getElementById(prefix+'_qty2')?.value) || 1;
+  const disc  = parseFloat(document.getElementById(prefix+'_disc')?.value) || 0;
+  const total = price * qty - disc;
+  const totalEl = document.getElementById(prefix+'_total');
+  if (totalEl) totalEl.value = fmt(total);
+
+  const profitEl = document.getElementById(prefix+'_profit');
+  if (profitEl) {
+    let cost = 0;
+    if (prefix === 'is') {
+      const id = parseInt(document.getElementById('is_product').value);
+      const prod = PRODUCTS.shop.find(p => p.id === id);
+      if (prod) cost = calcProductCost(prod).total * qty;
+    } else if (prefix === 'pp') {
+      const id = parseInt(document.getElementById('pp_product').value);
+      const prod = PRODUCTS.pp.find(p => p.id === id);
+      if (prod) cost = calcProductCost(prod).total * qty;
+    } else if (prefix === 'ws') {
+      const costPP = parseFloat(document.getElementById('ws_cost')?.value) || 0;
+      cost = costPP * qty;
+    } else if (prefix === 'wh') {
+      const unitCost = parseFloat(document.getElementById('wh_cost')?.value) || 0;
+      cost = unitCost * qty;
+    } else if (prefix === 'cu') {
+      const unitCost = parseFloat(document.getElementById('cu_cost')?.value) || 0;
+      cost = unitCost * qty;
+    } else if (prefix === 'cl') {
+      const unitCost = parseFloat(document.getElementById('cl_cost')?.value) || 0;
+      cost = unitCost * qty;
+    }
+    const profit = total - cost;
+    profitEl.value = fmt(profit);
+    profitEl.style.color = profit >= 0 ? 'var(--glaze-green)' : '#c04444';
+  }
+}
+
+function addSale(stream) {
+  const dateMap = { instore:'is_date', pottery:'pp_date', workshop:'ws_date', wholesale:'wh_date', custom:'cu_date', classes:'cl_date' };
+  const date = document.getElementById(dateMap[stream]).value;
+  if (!date) { showAlert('Please enter a date.','error'); return; }
+
+  let sale = { id: Date.now(), date };
+
+  if (stream === 'instore') {
+    const prodId = parseInt(document.getElementById('is_product').value);
+    const prod = PRODUCTS.shop.find(p => p.id === prodId);
+    const qty = parseInt(document.getElementById('is_qty').value) || 1;
+    const price = parseFloat(document.getElementById('is_price').value) || 0;
+    const disc  = parseFloat(document.getElementById('is_disc').value)  || 0;
+    const total = price * qty - disc;
+    const cost  = prod ? calcProductCost(prod).total * qty : 0;
+    sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('is_desc').value,
+      price, qty, disc, total, cost, profit: total - cost };
+    if (prod) { prod.qty = Math.max(0, (prod.qty||0) - qty); save(KEYS.products, PRODUCTS); }
+    ['is_date','is_product','is_desc','is_price','is_disc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    document.getElementById('is_qty').value = 1;
+    document.getElementById('is_disc').value = 0;
+    document.getElementById('is_total').value = '';
+    document.getElementById('is_profit').value = '';
+
+  } else if (stream === 'pottery') {
+    const prodId = parseInt(document.getElementById('pp_product').value);
+    const prod = PRODUCTS.pp.find(p => p.id === prodId);
+    const qty = parseInt(document.getElementById('pp_qty2').value) || 1;
+    const price = parseFloat(document.getElementById('pp_price').value) || 0;
+    const disc  = parseFloat(document.getElementById('pp_disc').value)  || 0;
+    const total = price * qty - disc;
+    const cost  = prod ? calcProductCost(prod).total * qty : 0;
+    sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('pp_desc').value,
+      price, qty, disc, total, cost, profit: total - cost };
+    if (prod) { prod.qty = Math.max(0, (prod.qty||0) - qty); save(KEYS.products, PRODUCTS); }
+    document.getElementById('pp_qty2').value = 1;
+    document.getElementById('pp_disc').value = 0;
+    document.getElementById('pp_total').value = '';
+    document.getElementById('pp_profit').value = '';
+
+  } else if (stream === 'workshop') {
+    const price    = parseFloat(document.getElementById('ws_price').value) || 0;
+    const costPP   = parseFloat(document.getElementById('ws_cost').value)  || 0;
+    const qty      = parseInt(document.getElementById('ws_qty').value)     || 1;
+    const disc     = parseFloat(document.getElementById('ws_disc').value)  || 0;
+    const total    = price * qty - disc;
+    const cost     = costPP * qty;
+    const profit   = total - cost;
+    sale = { ...sale, cat: document.getElementById('ws_cat').value, desc: document.getElementById('ws_desc').value,
+      price, costPP, qty, disc, total, cost, profit, notes: document.getElementById('ws_notes').value };
+    document.getElementById('ws_qty').value = 1;
+    document.getElementById('ws_disc').value = 0;
+    document.getElementById('ws_cost').value = 0;
+    document.getElementById('ws_total').value = '';
+    document.getElementById('ws_profit').value = '';
+
+  } else if (stream === 'wholesale') {
+    const price    = parseFloat(document.getElementById('wh_price').value) || 0;
+    const unitCost = parseFloat(document.getElementById('wh_cost').value)  || 0;
+    const qty      = parseInt(document.getElementById('wh_qty').value)     || 1;
+    const disc     = parseFloat(document.getElementById('wh_disc').value)  || 0;
+    const total    = price * qty - disc;
+    const cost     = unitCost * qty;
+    const profit   = total - cost;
+    sale = { ...sale, cat: document.getElementById('wh_cat').value, desc: document.getElementById('wh_desc').value,
+      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('wh_notes').value };
+    document.getElementById('wh_qty').value = 1;
+    document.getElementById('wh_disc').value = 0;
+    document.getElementById('wh_cost').value = 0;
+    document.getElementById('wh_total').value = '';
+    document.getElementById('wh_profit').value = '';
+    document.getElementById('wh_product').value = '';
+
+  } else if (stream === 'custom') {
+    const price    = parseFloat(document.getElementById('cu_price').value) || 0;
+    const unitCost = parseFloat(document.getElementById('cu_cost').value)  || 0;
+    const qty      = parseInt(document.getElementById('cu_qty').value)     || 1;
+    const disc     = parseFloat(document.getElementById('cu_disc').value)  || 0;
+    const total    = price * qty - disc;
+    const cost     = unitCost * qty;
+    const profit   = total - cost;
+    sale = { ...sale, cat: document.getElementById('cu_cat').value, desc: document.getElementById('cu_desc').value,
+      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cu_notes').value };
+    document.getElementById('cu_qty').value = 1;
+    document.getElementById('cu_disc').value = 0;
+    document.getElementById('cu_cost').value = 0;
+    document.getElementById('cu_total').value = '';
+    document.getElementById('cu_profit').value = '';
+
+  } else if (stream === 'classes') {
+    const price    = parseFloat(document.getElementById('cl_price').value) || 0;
+    const unitCost = parseFloat(document.getElementById('cl_cost').value)  || 0;
+    const qty      = parseInt(document.getElementById('cl_qty').value)     || 1;
+    const disc     = parseFloat(document.getElementById('cl_disc').value)  || 0;
+    const total    = price * qty - disc;
+    const cost     = unitCost * qty;
+    const profit   = total - cost;
+    sale = { ...sale, cat: document.getElementById('cl_cat').value, desc: document.getElementById('cl_desc').value,
+      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cl_notes').value };
+    document.getElementById('cl_qty').value = 1;
+    document.getElementById('cl_disc').value = 0;
+    document.getElementById('cl_cost').value = 0;
+    document.getElementById('cl_total').value = '';
+    document.getElementById('cl_profit').value = '';
+  }
+
+  SALES[stream].push(sale);
+  save(KEYS.sales, SALES);
+  renderSalesLog(stream);
+  renderCatalogue('shop');
+  renderCatalogue('pp');
+  showAlert('Sale recorded!');
+}
+
+function deleteSale(stream, id) {
+  if (!confirm('Delete this sale entry?')) return;
+  SALES[stream] = SALES[stream].filter(s => s.id !== id);
+  save(KEYS.sales, SALES);
+  renderSalesLog(stream);
+  showAlert('Sale deleted.');
+}
+
+function populateSalesMonthFilter(stream) {
+  const sel = document.getElementById('filter-' + stream);
+  if (!sel) return;
+  const months = getAllMonths();
+  const current = sel.value || currentYearMonth();
+  sel.innerHTML = '<option value="all">All Months</option>' +
+    months.map(m => `<option value="${m}"${m===current?' selected':''}>${monthLabel(m)}</option>`).join('');
+  if (!sel.value) sel.value = currentYearMonth();
+}
+
+function renderSalesLog(stream) {
+  populateSalesMonthFilter(stream);
+  const el = document.getElementById('slog-' + stream);
+  if (!el) return;
+  const sel = document.getElementById('filter-' + stream);
+  const month = sel ? sel.value : 'all';
+  let data = [...SALES[stream]].sort((a,b) => b.date.localeCompare(a.date));
+  if (month !== 'all') data = data.filter(s => s.date && s.date.startsWith(month));
+  if (!data.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">📋</div>No sales recorded for this period.</div>';
+    return;
+  }
+  const hasProfit = ['instore','pottery','workshop','wholesale','custom','classes'].includes(stream);
+  const isProductStream = stream === 'instore' || stream === 'pottery';
+  const totalRevenue = data.reduce((s,x) => s+(x.total||0), 0);
+  const totalProfit  = data.reduce((s,x) => s+(x.profit||0), 0);
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Date</th>
+      <th>${isProductStream ? 'Product' : 'Client / Category'}</th>
+      <th>Description</th><th>Unit Price</th><th>Qty</th>
+      <th>Discount</th><th>Total</th>
+      <th>Profit</th>
+      <th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>
+      ${data.map(s => `<tr>
+        <td>${s.date}</td>
+        <td>${s.productName || s.cat || '—'}</td>
+        <td>${s.desc || '—'}</td>
+        <td class="num">${fmt(s.price)}</td>
+        <td class="num">${s.qty}</td>
+        <td class="num">${fmt(s.disc)}</td>
+        <td class="num"><strong>${fmt(s.total)}</strong></td>
+        <td class="num ${(s.profit||0)>=0?'profit-pos':'profit-neg'}">${fmt(s.profit||0)}</td>
+        <td>${s.notes||'—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteSale('${stream}',${s.id})">✕</button></td>
+      </tr>`).join('')}
+      <tr style="background:var(--sand);font-weight:600;">
+        <td colspan="6" style="text-align:right;padding-right:0.8rem;">Period Total</td>
+        <td class="num">${fmt(totalRevenue)}</td>
+        <td class="num profit-pos">${fmt(totalProfit)}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tbody>
+  </table></div>`;
+}
+
+function renderAllSalesLogs() {
+  ['instore','pottery','workshop','wholesale','custom','classes'].forEach(renderSalesLog);
+}
+
+// ══════════════════════════════════════════
+//  EXPENSES
+// ══════════════════════════════════════════
+// Invoice file state
+let pendingInvoiceData = null; // base64 string
+
+function handleInvoiceSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  readInvoiceFile(file);
+}
+
+function handleInvoiceDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  readInvoiceFile(file);
+}
+
+function readInvoiceFile(file) {
+  // Warn if file is large
+  if (file.size > 3 * 1024 * 1024) {
+    showAlert('File is large (>3MB). Consider compressing for faster storage.', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    pendingInvoiceData = e.target.result; // base64 data URL
+    const area = document.getElementById('invoiceDropArea');
+    const preview = document.getElementById('invoicePreviewArea');
+    area.classList.add('has-file');
+    if (file.type.startsWith('image/')) {
+      preview.innerHTML = `<img src="${pendingInvoiceData}" class="invoice-thumb" alt="Invoice preview">
+        <div style="margin-top:0.4rem;font-size:0.78rem;">${file.name} ✓</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:0.3rem;" onclick="clearInvoice(event)">Remove</button>`;
+    } else {
+      preview.innerHTML = `<div class="invoice-doc-icon">📄</div>
+        <div style="font-size:0.82rem;">${file.name} ✓</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:0.3rem;" onclick="clearInvoice(event)">Remove</button>`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearInvoice(event) {
+  event.stopPropagation();
+  pendingInvoiceData = null;
+  document.getElementById('exp_invoice').value = '';
+  const area = document.getElementById('invoiceDropArea');
+  area.classList.remove('has-file');
+  document.getElementById('invoicePreviewArea').innerHTML = `
+    <div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div>
+    <div>Click to attach invoice or receipt</div>
+    <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>`;
+}
+
+function addExpense() {
+  const date = document.getElementById('exp_date').value;
+  const amount = parseFloat(document.getElementById('exp_amount').value) || 0;
+  if (!date || !amount) { showAlert('Please enter date and amount.','error'); return; }
+  const exp = {
+    id: Date.now(),
+    date,
+    cat: document.getElementById('exp_cat').value,
+    desc: document.getElementById('exp_desc').value,
+    amount,
+    invoice: pendingInvoiceData || null,
+  };
+  EXPENSES.push(exp);
+  save(KEYS.expenses, EXPENSES);
+  populateExpenseMonthFilter();
+  renderExpenses();
+  document.getElementById('exp_date').value = '';
+  document.getElementById('exp_desc').value = '';
+  document.getElementById('exp_amount').value = '';
+  clearInvoice({ stopPropagation: () => {} });
+  showAlert('Expense added.');
+}
+
+function viewInvoice(id) {
+  const exp = EXPENSES.find(e => e.id === id);
+  if (!exp || !exp.invoice) return;
+  // Open in a new tab
+  const win = window.open('', '_blank');
+  if (exp.invoice.startsWith('data:application/pdf')) {
+    win.document.write(`<iframe src="${exp.invoice}" style="width:100%;height:100vh;border:none;"></iframe>`);
+  } else {
+    win.document.write(`<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+      <img src="${exp.invoice}" style="max-width:100%;max-height:100vh;object-fit:contain;">
+    </body></html>`);
+  }
+}
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  EXPENSES = EXPENSES.filter(e => e.id !== id);
+  save(KEYS.expenses, EXPENSES);
+  renderExpenses();
+  showAlert('Expense deleted.');
+}
+
+function populateExpenseMonthFilter() {
+  const sel = document.getElementById('expMonthFilter');
+  if (!sel) return;
+  const months = getAllMonths();
+  sel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+}
+
+function renderExpenses() {
+  const sel = document.getElementById('expMonthFilter');
+  const month = sel ? sel.value : currentYearMonth();
+  const el = document.getElementById('expenseLog');
+  if (!el) return;
+  const data = EXPENSES.filter(e => e.date && e.date.startsWith(month)).sort((a,b)=>b.date.localeCompare(a.date));
+  const total = data.reduce((s,e) => s + e.amount, 0);
+  if (!data.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">💸</div>No expenses recorded for this month.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Invoice</th><th></th></tr></thead>
+      <tbody>
+        ${data.map(e => `<tr>
+          <td>${e.date}</td>
+          <td><span class="badge badge-clay">${e.cat}</span></td>
+          <td>${e.desc||'—'}</td>
+          <td class="num">${fmt(e.amount)}</td>
+          <td style="text-align:center;">${e.invoice ? `<button class="btn btn-ghost btn-sm" onclick="viewInvoice(${e.id})" title="View invoice">📎 View</button>` : '<span style="color:var(--ash);font-size:0.75rem;">—</span>'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.id})">✕</button></td>
+        </tr>`).join('')}
+        <tr style="background:var(--sand);font-weight:600;">
+          <td colspan="4">Total Expenses</td><td class="num">${fmt(total)}</td><td></td>
+        </tr>
+      </tbody>
+    </table></div>
+  `;
+}
+
+// ══════════════════════════════════════════
+//  STOCK
+// ══════════════════════════════════════════
+function renderStock() {
+  ['shop','pp'].forEach(type => {
+    const el = document.getElementById('stock' + (type==='shop'?'Shop':'PP'));
+    if (!el) return;
+    const products = PRODUCTS[type];
+    if (!products.length) {
+      el.innerHTML = '<div class="empty-state"><div class="ei">📦</div>No products in catalogue yet.</div>';
+      return;
+    }
+    el.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Product</th><th>Selling Price</th><th>Current Stock</th><th>Status</th></tr></thead>
+      <tbody>
+        ${products.map(prod => {
+          const sp = calcProductCost(prod).sellingPrice;
+          const low = prod.qty <= 3;
+          return `<tr>
+            <td><strong>${prod.name}</strong></td>
+            <td class="num">${fmt(sp)}</td>
+            <td class="num ${low?'low-stock':'ok-stock'}">${prod.qty}</td>
+            <td><span class="badge ${low?'badge-clay':'badge-green'}">${low?'Low Stock':'In Stock'}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>`;
+  });
+}
+
+function populateStockAdjusts() {
+  populateSalesDropdowns();
+}
+
+function adjustStock(type) {
+  const sel = document.getElementById(`adj_${type}_product`);
+  const qtyEl = document.getElementById(`adj_${type}_qty`);
+  const id = parseInt(sel.value);
+  const qty = parseInt(qtyEl.value) || 0;
+  const prod = PRODUCTS[type].find(p => p.id === id);
+  if (!prod) { showAlert('Select a product.','error'); return; }
+  prod.qty = Math.max(0, (prod.qty||0) + qty);
+  save(KEYS.products, PRODUCTS);
+  renderStock();
+  renderCatalogue(type);
+  qtyEl.value = 0;
+  showAlert(`Stock adjusted: ${prod.name} now ${prod.qty} units.`);
+}
+
+// ══════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════
+function populateDashMonthSelect() {
+  const sel = document.getElementById('dashMonthSelect');
+  const months = getAllMonths();
+  const prev = sel.value;
+  sel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if (prev && [...sel.options].some(o => o.value === prev)) {
+    sel.value = prev;
+  }
+}
+
+function getMonthData(month) {
+  const filterMonth = s => s.date && s.date.startsWith(month);
+  const instore   = SALES.instore.filter(filterMonth);
+  const pottery   = SALES.pottery.filter(filterMonth);
+  const workshop  = SALES.workshop.filter(filterMonth);
+  const wholesale = SALES.wholesale.filter(filterMonth);
+  const custom    = SALES.custom.filter(filterMonth);
+  const classes   = SALES.classes.filter(filterMonth);
+  const expenses  = EXPENSES.filter(filterMonth);
+
+  const sumTotal  = arr => arr.reduce((s,x) => s + (x.total||0), 0);
+  const sumProfit = arr => arr.reduce((s,x) => s + (x.profit||0), 0);
+  const sumCost   = arr => arr.reduce((s,x) => s + (x.cost||0),  0);
+
+  const revInstore   = sumTotal(instore);
+  const revPottery   = sumTotal(pottery);
+  const revWorkshop  = sumTotal(workshop);
+  const revWholesale = sumTotal(wholesale);
+  const revCustom    = sumTotal(custom);
+  const revClasses   = sumTotal(classes);
+  const totalRevenue = revInstore + revPottery + revWorkshop + revWholesale + revCustom + revClasses;
+  const totalCOGS    = sumCost(instore) + sumCost(pottery) + sumCost(workshop) + sumCost(wholesale) + sumCost(custom) + sumCost(classes);
+  const grossProfit  = sumProfit(instore) + sumProfit(pottery) + sumProfit(workshop) + sumProfit(wholesale) + sumProfit(custom) + sumProfit(classes);
+  const totalExpenses= expenses.reduce((s,e)=>s+e.amount,0);
+  const netProfit    = grossProfit - totalExpenses;
+
+  return { revInstore, revPottery, revWorkshop, revWholesale, revCustom, revClasses, totalRevenue,
+           totalCOGS, grossProfit, totalExpenses, netProfit };
+}
+
+function getAllTimeData() {
+  const allStreams = [...SALES.instore, ...SALES.pottery, ...SALES.workshop,
+                     ...SALES.wholesale, ...SALES.custom, ...SALES.classes];
+  const sum = (arr, key) => arr.reduce((s,x) => s + (x[key]||0), 0);
+  return {
+    revInstore:   sum(SALES.instore,   'total'),
+    revPottery:   sum(SALES.pottery,   'total'),
+    revWorkshop:  sum(SALES.workshop,  'total'),
+    revWholesale: sum(SALES.wholesale, 'total'),
+    revCustom:    sum(SALES.custom,    'total'),
+    revClasses:   sum(SALES.classes,   'total'),
+    totalRevenue: sum(allStreams, 'total'),
+    totalCOGS:    sum(allStreams, 'cost'),
+    grossProfit:  sum(allStreams, 'profit'),
+    totalExpenses:EXPENSES.reduce((s,e)=>s+(e.amount||0),0),
+    get netProfit() { return this.grossProfit - this.totalExpenses; },
+  };
+}
+
+function renderDashboard() {
+  populateDashMonthSelect();
+  const sel = document.getElementById('dashMonthSelect');
+  // After populate, sel.value is set to the first (most recent) month unless we had a previous value
+  const month = sel.value || currentYearMonth();
+  sel.value = month; // ensure it stays selected
+  document.getElementById('dashSubtitle').textContent = `Overview for ${monthLabel(month)}`;
+
+  const d = getMonthData(month);
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card highlight"><div class="stat-label">Total Revenue</div><div class="stat-value">${fmt(d.totalRevenue)}</div></div>
+    <div class="stat-card"><div class="stat-label">Cost of Goods Sold</div><div class="stat-value">${fmt(d.totalCOGS)}</div></div>
+    <div class="stat-card green"><div class="stat-label">Gross Profit</div><div class="stat-value">${fmt(d.grossProfit)}</div></div>
+    <div class="stat-card red"><div class="stat-label">Overhead Expenses</div><div class="stat-value">${fmt(d.totalExpenses)}</div></div>
+    <div class="stat-card ${d.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value">${fmt(d.netProfit)}</div><div class="stat-sub">${d.netProfit>=0?'✓ Profitable':'↓ Loss this month'}</div></div>
+  `;
+
+  document.getElementById('dashStreams').innerHTML = `
+    <div class="cost-breakdown">
+      <div class="cost-row"><span>🏪 In-Store Sales</span><span>${fmt(d.revInstore)}</span></div>
+      <div class="cost-row"><span>🎨 Pottery Painting</span><span>${fmt(d.revPottery)}</span></div>
+      <div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(d.revWorkshop)}</span></div>
+      <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(d.revWholesale)}</span></div>
+      <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(d.revCustom)}</span></div>
+      <div class="cost-row"><span>🎓 Classes</span><span>${fmt(d.revClasses)}</span></div>
+      <div class="cost-row total"><span>Total</span><span>${fmt(d.totalRevenue)}</span></div>
+    </div>
+  `;
+
+  // All-time summary
+  const at = getAllTimeData();
+  const atEl = document.getElementById('dashAllTime');
+  if (atEl) {
+    atEl.innerHTML = `
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:1.2rem;">
+        <div class="stat-card highlight"><div class="stat-label">Total Revenue</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalRevenue)}</div></div>
+        <div class="stat-card"><div class="stat-label">Total COGS</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalCOGS)}</div></div>
+        <div class="stat-card green"><div class="stat-label">Gross Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.grossProfit)}</div></div>
+        <div class="stat-card red"><div class="stat-label">Total Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalExpenses)}</div></div>
+        <div class="stat-card ${at.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.netProfit)}</div><div class="stat-sub">${at.netProfit>=0?'✓ Overall profitable':'↓ Overall loss'}</div></div>
+      </div>
+      <div class="cost-breakdown">
+        <div class="cost-row"><span>🏪 In-Store Sales</span><span>${fmt(at.revInstore)}</span></div>
+        <div class="cost-row"><span>🎨 Pottery Painting</span><span>${fmt(at.revPottery)}</span></div>
+        <div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(at.revWorkshop)}</span></div>
+        <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(at.revWholesale)}</span></div>
+        <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(at.revCustom)}</span></div>
+        <div class="cost-row"><span>🎓 Classes</span><span>${fmt(at.revClasses)}</span></div>
+        <div class="cost-row total"><span>Total Revenue</span><span>${fmt(at.totalRevenue)}</span></div>
+      </div>
+    `;
+  }
+
+  renderSnapshots();
+}
+
+function saveMonthSnapshot() {
+  const sel = document.getElementById('dashMonthSelect');
+  const month = sel.value || currentYearMonth();
+  const d = getMonthData(month);
+  const existing = SNAPSHOTS.findIndex(s => s.month === month);
+  const snap = { month, label: monthLabel(month), ...d, savedAt: new Date().toISOString() };
+  if (existing >= 0) SNAPSHOTS[existing] = snap;
+  else SNAPSHOTS.push(snap);
+  save(KEYS.snapshots, SNAPSHOTS);
+  renderSnapshots();
+  showAlert(`Snapshot saved for ${monthLabel(month)}.`);
+}
+
+function renderSnapshots() {
+  const el = document.getElementById('dashSnapshots');
+  if (!el) return;
+  if (!SNAPSHOTS.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">📸</div>No snapshots saved yet. Save a snapshot to archive a month\'s summary.</div>';
+    return;
+  }
+  const sorted = [...SNAPSHOTS].sort((a,b)=>b.month.localeCompare(a.month));
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Month</th><th>Revenue</th><th>Expenses</th><th>Net Profit</th></tr></thead>
+    <tbody>
+      ${sorted.map(s=>`<tr>
+        <td>${s.label}</td>
+        <td class="num">${fmt(s.totalRevenue)}</td>
+        <td class="num">${fmt(s.totalExpenses)}</td>
+        <td class="num ${s.netProfit>=0?'profit-pos':'profit-neg'}">${fmt(s.netProfit)}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// ══════════════════════════════════════════
+//  QUOTE ESTIMATOR
+// ══════════════════════════════════════════
+function calcQuote() {
+  const shape = document.getElementById('q_shape').value;
+  const CLAY_DENSITY = 1.9; // g/cm³
+  const SHRINKAGE = 1.12;
+
+  // Show/hide dimension fields based on shape
+  document.getElementById('q_dim_d_wrap').style.display  = (shape==='cylinder'||shape==='sphere') ? '' : 'none';
+  document.getElementById('q_dim_h_wrap').style.display  = (shape==='cylinder') ? '' : 'none';
+  document.getElementById('q_dim_l_wrap').style.display  = (shape==='slab') ? '' : 'none';
+  document.getElementById('q_dim_w_wrap').style.display  = (shape==='slab') ? '' : 'none';
+  document.getElementById('q_dim_t_wrap').style.display  = (shape==='slab') ? '' : 'none';
+  document.getElementById('q_custom_weight_wrap').style.display = (shape==='custom') ? '' : 'none';
+
+  const wall = parseFloat(document.getElementById('q_wall').value) || 0.8;
+  let clayWeight = 0;
+  let dimNote = '';
+
+  if (shape === 'cylinder') {
+    const d = parseFloat(document.getElementById('q_diameter').value) || 0;
+    const h = parseFloat(document.getElementById('q_height').value)   || 0;
+    const r = d / 2;
+    const outerVol = Math.PI * r * r * h;
+    const ri = Math.max(0, r - wall);
+    const innerVol = Math.PI * ri * ri * Math.max(0, h - wall);
+    const vol = outerVol - innerVol;
+    clayWeight = vol * CLAY_DENSITY * SHRINKAGE;
+    dimNote = `Cylinder ${d}cm dia × ${h}cm tall | Wall ${wall}cm | Volume ≈ ${vol.toFixed(1)} cm³ → ${clayWeight.toFixed(0)}g clay`;
+  } else if (shape === 'sphere') {
+    const d = parseFloat(document.getElementById('q_diameter').value) || 0;
+    const r = d / 2;
+    const ri = Math.max(0, r - wall);
+    const vol = (4/3) * Math.PI * (r*r*r - ri*ri*ri) / 2; // hemisphere
+    clayWeight = vol * CLAY_DENSITY * SHRINKAGE;
+    dimNote = `Hemisphere ${d}cm dia | Wall ${wall}cm | Volume ≈ ${vol.toFixed(1)} cm³ → ${clayWeight.toFixed(0)}g clay`;
+  } else if (shape === 'slab') {
+    const l = parseFloat(document.getElementById('q_length').value)    || 0;
+    const w = parseFloat(document.getElementById('q_width').value)     || 0;
+    const t = parseFloat(document.getElementById('q_thickness').value) || 1;
+    const vol = l * w * t;
+    clayWeight = vol * CLAY_DENSITY * SHRINKAGE;
+    dimNote = `Slab ${l}×${w}×${t}cm | Volume ≈ ${vol.toFixed(1)} cm³ → ${clayWeight.toFixed(0)}g clay`;
+  } else {
+    clayWeight = parseFloat(document.getElementById('q_custom_weight').value) || 0;
+    dimNote = `Custom weight: ${clayWeight}g`;
+  }
+
+  const glazeG    = parseFloat(document.getElementById('q_glaze_g').value)    || 0;
+  const firing    = document.getElementById('q_firing').value;
+  const kilnCap   = parseFloat(document.getElementById('q_kiln_cap').value)   || 1;
+  const complexity= parseFloat(document.getElementById('q_complexity').value) || 1;
+  const markup    = parseFloat(document.getElementById('q_markup').value)     || 100;
+
+  const qClayType  = document.getElementById('q_clay_type')?.value || 'white';
+  const qClayRate  = qClayType === 'terra' ? (COSTS.clayTerra || 0) : (COSTS.clayWhite || 0);
+  const clayCost   = clayWeight * qClayRate;
+  const labourCost = (COSTS.labour || 0) * complexity;
+  const glazeCost  = glazeG * (COSTS.glazeG || 0);
+  const bisqueCost = (firing==='both'||firing==='bisque') ? (COSTS.bisque||0)/kilnCap : 0;
+  const glazeFireCost=(firing==='both'||firing==='glaze') ? (COSTS.glazeFire||0)/kilnCap : 0;
+  const total = clayCost + labourCost + glazeCost + bisqueCost + glazeFireCost;
+  const price = total * (1 + markup/100);
+
+  document.getElementById('qPrice').textContent = fmt(price);
+  document.getElementById('qSub').textContent = `Cost: ${fmt(total)} | Markup: ${markup}%`;
+  document.getElementById('qDimNote').textContent = dimNote;
+
+  document.getElementById('quoteBreakdown').innerHTML = `
+    <div class="cost-row"><span>${qClayType==='terra'?'Terracotta':'White Clay'} (${clayWeight.toFixed(0)}g × ${fmt(qClayRate)}/g)</span><span>${fmt(clayCost)}</span></div>
+    <div class="cost-row"><span>Labour (× ${complexity} complexity)</span><span>${fmt(labourCost)}</span></div>
+    <div class="cost-row"><span>Glaze (${glazeG}g × ${fmt(COSTS.glazeG)}/g)</span><span>${fmt(glazeCost)}</span></div>
+    <div class="cost-row"><span>Bisque fire (${fmt(COSTS.bisque)} ÷ ${kilnCap})</span><span>${fmt(bisqueCost)}</span></div>
+    <div class="cost-row"><span>Glaze fire (${fmt(COSTS.glazeFire)} ÷ ${kilnCap})</span><span>${fmt(glazeFireCost)}</span></div>
+    <div class="cost-row total"><span>Total Cost</span><span>${fmt(total)}</span></div>
+    <div class="cost-row price"><span>Selling Price (${markup}% markup)</span><span>${fmt(price)}</span></div>
+  `;
+}
+
+
+// ══════════════════════════════════════════
+//  EXCEL EXPORT
+// ══════════════════════════════════════════
+function exportMonthExcel(stream) {
+  if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded. Please check your internet connection.','error'); return; }
+  const sel = document.getElementById('filter-' + stream);
+  const month = sel ? sel.value : 'all';
+  let data = [...SALES[stream]].sort((a,b) => a.date.localeCompare(b.date));
+  if (month !== 'all') data = data.filter(s => s.date && s.date.startsWith(month));
+  const monthStr = month === 'all' ? 'All Months' : monthLabel(month);
+  const streamLabels = {
+    instore: 'In-Store Sales', pottery: 'Pottery Painting', workshop: 'Workshops',
+    wholesale: 'Wholesale Orders', custom: 'Custom Orders', classes: 'Classes'
+  };
+  if (!data.length) { showAlert('No data to export for this period.','error'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Sales Data ──
+  const isProductStream = stream === 'instore' || stream === 'pottery';
+  const headers = ['Date', isProductStream ? 'Product' : 'Client / Category',
+    'Description', 'Unit Price (USD)', 'Quantity', 'Discount (USD)', 'Total (USD)', 'Profit (USD)', 'Notes'];
+  const rows = data.map(s => [
+    s.date, s.productName || s.cat || '', s.desc || '',
+    s.price || 0, s.qty || 0, s.disc || 0, s.total || 0, s.profit || 0,
+    s.notes || ''
+  ]);
+  const totalRow = ['TOTAL', '', '', '', '', '',
+    data.reduce((a,s)=>a+(s.total||0),0),
+    data.reduce((a,s)=>a+(s.profit||0),0), ''];
+  const wsData = [headers, ...rows, [], totalRow];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [10,22,25,14,10,14,14,14,22].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, streamLabels[stream].slice(0,31));
+
+  // ── Sheet 2: Monthly Summary ──
+  if (month !== 'all') {
+    const d = getMonthData(month);
+    const sumData = [
+      ['Klay Ceramics — Monthly Summary', monthStr],
+      [],
+      ['Revenue Breakdown', ''],
+      ['In-Store Sales',    d.revInstore],
+      ['Pottery Painting',  d.revPottery],
+      ['Workshops',         d.revWorkshop],
+      ['Wholesale Orders',  d.revWholesale],
+      ['Custom Orders',     d.revCustom],
+      ['Classes',           d.revClasses],
+      ['Total Revenue',     d.totalRevenue],
+      [],
+      ['Cost & Profit', ''],
+      ['Total Cost of Goods Sold', d.totalCOGS],
+      ['Gross Profit',             d.grossProfit],
+      ['Overhead Expenses',        d.totalExpenses],
+      ['Net Profit',               d.netProfit],
+    ];
+    const wsSummary = XLSX.utils.aoa_to_sheet(sumData);
+    wsSummary['!cols'] = [{wch:26},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Summary');
+  }
+
+  // ── Sheet 3: Expenses ──
+  const expData = (month === 'all' ? EXPENSES : EXPENSES.filter(e => e.date && e.date.startsWith(month)))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if (expData.length) {
+    const expRows = [['Date','Category','Description','Amount (USD)'],
+      ...expData.map(e=>[e.date, e.cat, e.desc||'', e.amount||0]),
+      [], ['TOTAL','','', expData.reduce((a,e)=>a+(e.amount||0),0)]];
+    const wsExp = XLSX.utils.aoa_to_sheet(expRows);
+    wsExp['!cols'] = [{wch:12},{wch:18},{wch:28},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, wsExp, 'Expenses');
+  }
+
+  const filename = `KlayCeramics_${streamLabels[stream].replace(/\s+/g,'_')}_${month==='all'?'AllMonths':month}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showAlert(`Exported: ${filename}`);
+}
+
+
+function exportExpensesExcel() {
+  if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded. Please check your internet connection.','error'); return; }
+  const sel = document.getElementById('expMonthFilter');
+  const month = sel ? sel.value : 'all';
+  const monthStr = month === 'all' ? 'All Months' : monthLabel(month);
+  const expData = (month === 'all' ? [...EXPENSES] : EXPENSES.filter(e => e.date && e.date.startsWith(month)))
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  if (!expData.length) { showAlert('No expenses to export for this period.','error'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Expense Detail ──
+  const headers = ['Date', 'Category', 'Description', 'Amount (USD)'];
+  const rows = expData.map(e => [e.date, e.cat, e.desc || '', e.amount || 0]);
+  const totalRow = ['TOTAL', '', '', expData.reduce((a,e) => a + (e.amount||0), 0)];
+  const wsData = [['Klay Ceramics — Expenses', monthStr], [], headers, ...rows, [], totalRow];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:12},{wch:20},{wch:30},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
+
+  // ── Sheet 2: Category Summary ──
+  const catTotals = {};
+  expData.forEach(e => { catTotals[e.cat] = (catTotals[e.cat]||0) + (e.amount||0); });
+  const catRows = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+  const wsCatData = [
+    ['Category Summary', monthStr], [],
+    ['Category', 'Total (USD)'],
+    ...catRows,
+    [],
+    ['GRAND TOTAL', expData.reduce((a,e)=>a+(e.amount||0),0)]
+  ];
+  const wsCat = XLSX.utils.aoa_to_sheet(wsCatData);
+  wsCat['!cols'] = [{wch:22},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsCat, 'By Category');
+
+  const filename = `KlayCeramics_Expenses_${month==='all'?'AllMonths':month}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showAlert(`Exported: ${filename}`);
+}
+
+
+// ══════════════════════════════════════════
+//  CASH FLOAT
+// ══════════════════════════════════════════
+function updateFloatTypeStyle() {
+  const sel = document.getElementById('fl_type');
+  sel.style.color = sel.value === 'in' ? 'var(--glaze-green)' : '#e05c5c';
+  sel.style.fontWeight = '600';
+}
+
+function addFloatTx() {
+  const date   = document.getElementById('fl_date').value;
+  const type   = document.getElementById('fl_type').value;
+  const amount = parseFloat(document.getElementById('fl_amount').value) || 0;
+  const desc   = document.getElementById('fl_desc').value.trim();
+
+  if (!date)   { showAlert('Please enter a date.', 'error'); return; }
+  if (!amount) { showAlert('Please enter an amount.', 'error'); return; }
+  if (!desc)   { showAlert('Please enter a description.', 'error'); return; }
+
+  FLOAT.push({ id: Date.now(), date, type, amount, desc });
+  save(KEYS.float, FLOAT);
+
+  document.getElementById('fl_date').value   = new Date().toISOString().slice(0,10);
+  document.getElementById('fl_amount').value = '';
+  document.getElementById('fl_desc').value   = '';
+  document.getElementById('fl_type').value   = 'in';
+  updateFloatTypeStyle();
+
+  renderFloat();
+  showAlert('Transaction logged.');
+}
+
+function deleteFloatTx(id) {
+  id = Number(id);
+  if (!window.confirm('Delete this float transaction?')) return;
+  FLOAT = FLOAT.filter(tx => Number(tx.id) !== id);
+  save(KEYS.float, FLOAT);
+  renderFloat();
+  showAlert('Transaction deleted.');
+}
+
+function populateFloatMonthFilter() {
+  const sel = document.getElementById('floatMonthFilter');
+  if (!sel) return;
+  const months = new Set([currentYearMonth()]);
+  FLOAT.forEach(tx => { if (tx.date) months.add(tx.date.slice(0,7)); });
+  const sorted = [...months].sort().reverse();
+  const current = sel.value || 'all';
+  sel.innerHTML = '<option value="all">All Time</option>' +
+    sorted.map(m => `<option value="${m}"${m===current?' selected':''}>${monthLabel(m)}</option>`).join('');
+}
+
+function renderFloat() {
+  populateFloatMonthFilter();
+
+  // Always calculate running balance from ALL transactions (unfiltered)
+  const allSorted = [...FLOAT].sort((a,b) => a.date.localeCompare(b.date) || a.id - b.id);
+  const totalIn  = allSorted.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0);
+  const totalOut = allSorted.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0);
+  const balance  = totalIn - totalOut;
+
+  document.getElementById('floatBalance').textContent = fmt(balance);
+  document.getElementById('floatBalance').style.color = balance >= 0 ? 'var(--smoke)' : '#e05c5c';
+  document.getElementById('floatTotalIn').textContent  = fmt(totalIn);
+  document.getElementById('floatTotalOut').textContent = fmt(totalOut);
+  document.getElementById('floatTxCount').textContent  = `${FLOAT.length} transaction${FLOAT.length!==1?'s':''} total`;
+
+  // Filtered view for the log
+  const sel = document.getElementById('floatMonthFilter');
+  const month = sel ? sel.value : 'all';
+  let filtered = [...allSorted].reverse(); // newest first for display
+  if (month !== 'all') filtered = filtered.filter(tx => tx.date && tx.date.startsWith(month));
+
+  const logEl = document.getElementById('floatLog');
+  if (!filtered.length) {
+    logEl.innerHTML = '<div class="empty-state"><div class="ei">💵</div>No transactions for this period.</div>';
+    return;
+  }
+
+  // Build running balance for displayed rows (newest-first means we show running total per row)
+  // Calculate running balance up to each transaction in chronological order
+  let running = 0;
+  const withBalance = allSorted.map(tx => {
+    running += tx.type === 'in' ? tx.amount : -tx.amount;
+    return { ...tx, runningBalance: running };
+  });
+
+  // Now filter and reverse for display (newest first)
+  const filteredIds = new Set(filtered.map(t=>t.id));
+  const displayRows = withBalance.filter(t => filteredIds.has(t.id)).reverse();
+
+  const periodIn  = filtered.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0);
+  const periodOut = filtered.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0);
+
+  logEl.innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Date</th><th>Type</th><th>Description</th>
+        <th>Cash In</th><th>Cash Out</th><th>Running Balance</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${displayRows.map(tx => `<tr>
+          <td>${tx.date}</td>
+          <td><span class="badge ${tx.type==='in'?'badge-green':'badge-clay'}">${tx.type==='in'?'💵 In':'💸 Out'}</span></td>
+          <td>${tx.desc}</td>
+          <td class="num profit-pos">${tx.type==='in' ? fmt(tx.amount) : '—'}</td>
+          <td class="num profit-neg">${tx.type==='out' ? fmt(tx.amount) : '—'}</td>
+          <td class="num" style="font-weight:600;color:${tx.runningBalance>=0?'var(--smoke)':'#e05c5c'}">${fmt(tx.runningBalance)}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteFloatTx(${tx.id})">✕</button></td>
+        </tr>`).join('')}
+        <tr style="background:var(--sand);font-weight:600;">
+          <td colspan="3" style="text-align:right;padding-right:0.8rem;">Period Totals</td>
+          <td class="num profit-pos">${fmt(periodIn)}</td>
+          <td class="num profit-neg">${fmt(periodOut)}</td>
+          <td class="num">${fmt(periodIn - periodOut)}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table></div>`;
+}
+
+function exportFloatExcel() {
+  if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded. Please check your internet connection.', 'error'); return; }
+  const sel = document.getElementById('floatMonthFilter');
+  const month = sel ? sel.value : 'all';
+  const monthStr = month === 'all' ? 'All Time' : monthLabel(month);
+
+  const allSorted = [...FLOAT].sort((a,b) => a.date.localeCompare(b.date) || a.id - b.id);
+  let running = 0;
+  const withBalance = allSorted.map(tx => {
+    running += tx.type === 'in' ? tx.amount : -tx.amount;
+    return { ...tx, runningBalance: running };
+  });
+  const data = month === 'all' ? withBalance : withBalance.filter(tx => tx.date && tx.date.startsWith(month));
+
+  if (!data.length) { showAlert('No transactions to export for this period.', 'error'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const headers = ['Date', 'Type', 'Description', 'Cash In (USD)', 'Cash Out (USD)', 'Running Balance (USD)'];
+  const rows = data.map(tx => [
+    tx.date,
+    tx.type === 'in' ? 'Cash In' : 'Cash Out',
+    tx.desc,
+    tx.type === 'in'  ? tx.amount : 0,
+    tx.type === 'out' ? tx.amount : 0,
+    tx.runningBalance
+  ]);
+  const totalIn  = data.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0);
+  const totalOut = data.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0);
+  const wsData = [
+    ['Klay Ceramics — Cash Float', monthStr], [],
+    headers, ...rows, [],
+    ['TOTALS', '', '', totalIn, totalOut, totalIn - totalOut]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:12},{wch:12},{wch:32},{wch:16},{wch:16},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Cash Float');
+
+  const filename = `KlayCeramics_CashFloat_${month==='all'?'AllTime':month}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  showAlert(`Exported: ${filename}`);
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+// ══════════════════════════════════════════
+//  GOOGLE AUTH
+// ══════════════════════════════════════════
+let tokenClient = null;
+
+function initGoogleAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: document.getElementById('clientIdInput')?.value || localStorage.getItem('klay_client_id') || '',
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: async (resp) => {
+      if (resp.error) {
+        showAlert('Sign-in failed: ' + resp.error, 'error');
+        return;
+      }
+      OAUTH_TOKEN = resp.access_token;
+      localStorage.setItem('klay_oauth_token', OAUTH_TOKEN);
+      document.getElementById('setupOverlay').style.display = 'none';
+      document.getElementById('signinBtn')?.setAttribute('disabled', true);
+      showLoadingOverlay('Connecting to Google Sheets…');
+      await ensureSheetTabs();
+      const ok = await readAllFromSheets();
+      hideLoadingOverlay();
+      if (ok) {
+        showAlert('Connected! Data loaded from Google Sheets.');
+      } else {
+        showAlert('Connected, but could not read data. Check Sheet ID.', 'error');
+      }
+      bootApp();
+    },
+  });
+}
+
+function requestGoogleToken() {
+  const clientId = document.getElementById('clientIdInput').value.trim();
+  const sheetId  = document.getElementById('sheetIdInput').value.trim();
+  const apiKey   = document.getElementById('apiKeyInput').value.trim();
+  if (!clientId || !sheetId || !apiKey) {
+    showAlert('Please fill in all three fields.', 'error');
+    return;
+  }
+  localStorage.setItem('klay_client_id', clientId);
+  localStorage.setItem('klay_sheet_id',  sheetId);
+  localStorage.setItem('klay_api_key',   apiKey);
+  SHEET_ID = sheetId;
+  API_KEY  = apiKey;
+  // Re-init with new client id
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: async (resp) => {
+      if (resp.error) { showAlert('Sign-in failed: ' + resp.error, 'error'); return; }
+      OAUTH_TOKEN = resp.access_token;
+      document.getElementById('setupOverlay').style.display = 'none';
+      showLoadingOverlay('Setting up your Google Sheet…');
+      await ensureSheetTabs();
+      const ok = await readAllFromSheets();
+      hideLoadingOverlay();
+      showAlert(ok ? '✓ Connected! Your data is now cloud-synced.' : 'Connected but check your Sheet ID.', ok ? 'success' : 'error');
+      bootApp();
+    },
+  });
+  tokenClient.requestAccessToken();
+}
+
+function showLoadingOverlay(msg) {
+  let el = document.getElementById('loadingOverlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loadingOverlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(61,46,37,0.7);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:Cormorant Garamond,serif;font-size:1.4rem;gap:1rem;';
+    el.innerHTML = '<div style="font-size:2rem;">🏺</div><div id="loadingMsg"></div><div style="font-size:0.85rem;opacity:0.7;">Please wait…</div>';
+    document.body.appendChild(el);
+  }
+  document.getElementById('loadingMsg').textContent = msg || 'Loading…';
+  el.style.display = 'flex';
+}
+
+function hideLoadingOverlay() {
+  const el = document.getElementById('loadingOverlay');
+  if (el) el.style.display = 'none';
+}
+
+function bootApp() {
+  // Re-init state from cache (Sheets data now in _cache)
+  COSTS = load('klay_costs') || { clay:0, clayWhite:0, clayTerra:0, plaster:0, labour:0, bisque:0, glazeFire:0, glazeG:0 };
+  if (!COSTS.clayWhite && COSTS.clay) COSTS.clayWhite = COSTS.clay;
+  if (!COSTS.clayTerra) COSTS.clayTerra = 0;
+
+  PRODUCTS = load('klay_products') || { shop: [], pp: [] };
+  SALES = load('klay_sales') || { instore:[], pottery:[], workshop:[], wholesale:[], custom:[], classes:[] };
+  if (!SALES.custom) SALES.custom = [];
+  if (!SALES.classes) SALES.classes = [];
+  EXPENSES = load('klay_expenses') || [];
+  SNAPSHOTS = load('klay_snapshots') || [];
+  FLOAT = load('klay_float') || [];
+
+  loadCostInputs();
+  renderCostsSummary();
+  renderDashboard();
+  populateSalesDropdowns();
+  renderAllSalesLogs();
+  renderCatalogue('shop');
+  renderCatalogue('pp');
+  populateExpenseMonthFilter();
+  renderExpenses();
+  renderStock();
+  calcQuote();
+  updateFloatTypeStyle();
+  renderFloat();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().slice(0,10);
+  document.querySelectorAll('input[type=date]').forEach(el => el.value = today);
+  document.getElementById('headerDate').textContent =
+    new Date().toLocaleDateString('en-US', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  const savedClientId = localStorage.getItem('klay_client_id') || '';
+  const savedSheetId  = localStorage.getItem('klay_sheet_id')  || '';
+  const savedApiKey   = localStorage.getItem('klay_api_key')   || '';
+  SHEET_ID = savedSheetId;
+  API_KEY  = savedApiKey;
+
+  if (savedClientId) document.getElementById('clientIdInput').value = savedClientId;
+  if (savedSheetId)  document.getElementById('sheetIdInput').value  = savedSheetId;
+  if (savedApiKey)   document.getElementById('apiKeyInput').value   = savedApiKey;
+
+  // If already configured, try to auto-connect silently
+  if (savedClientId && savedSheetId && savedApiKey) {
+    document.getElementById('setupOverlay').style.display = 'none';
+    // Still need Google sign-in (tokens expire), so show a reconnect bar
+    document.getElementById('reconnectBar').style.display = 'flex';
+  } else {
+    document.getElementById('setupOverlay').style.display = 'flex';
+  }
+
+  // Boot with localStorage data so UI is usable while signing in
+  bootApp();
+});
+
+function reconnectGoogle() {
+  const clientId = localStorage.getItem('klay_client_id') || '';
+  const sheetId  = localStorage.getItem('klay_sheet_id')  || '';
+  const apiKey   = localStorage.getItem('klay_api_key')   || '';
+  if (!clientId) { document.getElementById('setupOverlay').style.display='flex'; return; }
+  SHEET_ID = sheetId;
+  API_KEY  = apiKey;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: async (resp) => {
+      if (resp.error) { showAlert('Sign-in failed: ' + resp.error, 'error'); return; }
+      OAUTH_TOKEN = resp.access_token;
+      document.getElementById('reconnectBar').style.display = 'none';
+      showLoadingOverlay('Loading your data from Google Sheets…');
+      await ensureSheetTabs();
+      const ok = await readAllFromSheets();
+      hideLoadingOverlay();
+      if (ok) {
+        showAlert('✓ Connected and data loaded!');
+        bootApp();
+      } else {
+        showAlert('Signed in but could not read Sheet. Check your Sheet ID.', 'error');
+      }
+    },
+  });
+  tokenClient.requestAccessToken();
+}
+
+function openSetup() {
+  document.getElementById('setupOverlay').style.display = 'flex';
+}
+
+// Override flushToSheets to show sync indicator
+const _origFlush = flushToSheets;
+async function flushToSheets() {
+  const ind = document.getElementById('syncIndicator');
+  if (ind) { ind.style.display='inline-block'; ind.className='sync-indicator syncing'; ind.textContent='⏳ Saving…'; }
+  await _origFlush();
+  if (ind) { ind.className='sync-indicator'; ind.textContent='✓ Synced'; setTimeout(()=>{ ind.style.display='none'; }, 3000); }
+}
+
+</script>
+</body>
+</html>
