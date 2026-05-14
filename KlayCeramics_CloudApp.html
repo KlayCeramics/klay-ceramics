@@ -1187,9 +1187,16 @@
       <button class="modal-close" onclick="closeExpenseEdit()">✕</button>
     </div>
     <input type="hidden" id="expEdit_id">
-    <input type="hidden" id="expEdit_section">
     <div class="form-grid wide">
       <div class="form-group"><label>Date</label><input type="date" id="expEdit_date"></div>
+      <div class="form-group">
+        <label>Expense Section</label>
+        <select id="expEdit_section">
+          <option value="overhead">🏠 Overhead</option>
+          <option value="variable">📦 Variable</option>
+          <option value="capital">🔧 Capital Reinvestment</option>
+        </select>
+      </div>
       <div class="form-group"><label>Category</label><input type="text" id="expEdit_cat"></div>
       <div class="form-group"><label>Description</label><input type="text" id="expEdit_desc"></div>
       <div class="form-group"><label>Amount (USD)</label><input type="number" id="expEdit_amount" step="0.01"></div>
@@ -2137,14 +2144,32 @@ function saveExpenseEdit() {
   const id = Number(document.getElementById('expEdit_id').value);
   const exp = EXPENSES.find(e => Number(e.id) === id);
   if (!exp) return;
-  exp.date   = document.getElementById('expEdit_date').value;
-  exp.cat    = document.getElementById('expEdit_cat').value;
-  exp.desc   = document.getElementById('expEdit_desc').value;
-  exp.amount = parseFloat(document.getElementById('expEdit_amount').value) || 0;
+  const oldSection = exp.section || 'overhead';
+  const newSection = document.getElementById('expEdit_section').value;
+  exp.date    = document.getElementById('expEdit_date').value;
+  exp.section = newSection;
+  exp.cat     = document.getElementById('expEdit_cat').value;
+  exp.desc    = document.getElementById('expEdit_desc').value;
+  exp.amount  = parseFloat(document.getElementById('expEdit_amount').value) || 0;
   save(KEYS.expenses, EXPENSES);
   closeExpenseEdit();
-  renderExpenses(exp.section || 'overhead');
-  showAlert('Expense updated.');
+  // Re-render both old and new section tabs in case section changed
+  renderExpenses(oldSection);
+  if (newSection !== oldSection) {
+    renderExpenses(newSection);
+    // Switch the tab view to where the item now lives
+    document.querySelectorAll('[id^="etab-"]').forEach(t => t.classList.remove('active'));
+    document.getElementById('etab-' + newSection).classList.add('active');
+    document.querySelectorAll('#page-expenses .tab-btn').forEach(b => b.classList.remove('active'));
+    const tabLabels = { overhead:'🏠 Overhead', variable:'📦 Variable', capital:'🔧 Capital Reinvestment' };
+    document.querySelectorAll('#page-expenses .tab-btn').forEach(b => {
+      if (b.textContent.trim() === tabLabels[newSection]) b.classList.add('active');
+    });
+    showAlert(`Expense moved to ${tabLabels[newSection]} and updated.`);
+  } else {
+    showAlert('Expense updated.');
+  }
+  renderDashboard();
 }
 
 function populateExpenseMonthFilter(section) {
