@@ -473,14 +473,26 @@
 
   <div class="stats-grid" id="dashStats"></div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;flex-wrap:wrap;">
-    <div class="card">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+    <div class="card" style="margin-bottom:0;">
       <div class="card-title">Revenue by Stream</div>
       <div id="dashStreams"></div>
     </div>
+    <div class="card" style="margin-bottom:0;">
+      <div class="card-title">Operating Expenses Breakdown</div>
+      <div id="dashExpenses"></div>
+    </div>
   </div>
 
-  <div class="card" style="margin-top:1.5rem;">
+  <div class="card" style="margin-bottom:1.5rem;border-left:4px solid var(--glaze-green);">
+    <div class="card-title" style="display:flex;align-items:center;gap:0.6rem;">
+      🔧 Capital Reinvestment
+      <span style="font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--ash);letter-spacing:0.04em;">not included in profit calculation</span>
+    </div>
+    <div id="dashCapital"></div>
+  </div>
+
+  <div class="card" style="margin-top:0;">
     <div class="card-title" style="display:flex;align-items:center;gap:0.6rem;">
       📊 All-Time Summary
       <span style="font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--ash);letter-spacing:0.04em;">from first entry to today</span>
@@ -2274,17 +2286,26 @@ function getMonthData(month) {
   const totalRevenue = revInstore + revPottery + revWorkshop + revWholesale + revCustom + revClasses;
   const totalCOGS    = sumCost(instore) + sumCost(pottery) + sumCost(workshop) + sumCost(wholesale) + sumCost(custom) + sumCost(classes);
   const grossProfit  = sumProfit(instore) + sumProfit(pottery) + sumProfit(workshop) + sumProfit(wholesale) + sumProfit(custom) + sumProfit(classes);
-  const totalExpenses= expenses.reduce((s,e)=>s+e.amount,0);
-  const netProfit    = grossProfit - totalExpenses;
+  // Split expenses by section — capital excluded from operating expenses & net profit
+  const overheadExp  = expenses.filter(e => !e.section || e.section === 'overhead').reduce((s,e)=>s+(e.amount||0),0);
+  const variableExp  = expenses.filter(e => e.section === 'variable').reduce((s,e)=>s+(e.amount||0),0);
+  const capitalExp   = expenses.filter(e => e.section === 'capital').reduce((s,e)=>s+(e.amount||0),0);
+  const operatingExp = overheadExp + variableExp;
+  const netProfit    = grossProfit - operatingExp;
 
   return { revInstore, revPottery, revWorkshop, revWholesale, revCustom, revClasses, totalRevenue,
-           totalCOGS, grossProfit, totalExpenses, netProfit };
+           totalCOGS, grossProfit, overheadExp, variableExp, capitalExp, operatingExp, netProfit };
 }
 
 function getAllTimeData() {
   const allStreams = [...SALES.instore, ...SALES.pottery, ...SALES.workshop,
                      ...SALES.wholesale, ...SALES.custom, ...SALES.classes];
   const sum = (arr, key) => arr.reduce((s,x) => s + (x[key]||0), 0);
+  const overheadExp  = EXPENSES.filter(e=>(!e.section||e.section==='overhead')).reduce((s,e)=>s+(e.amount||0),0);
+  const variableExp  = EXPENSES.filter(e=>e.section==='variable').reduce((s,e)=>s+(e.amount||0),0);
+  const capitalExp   = EXPENSES.filter(e=>e.section==='capital').reduce((s,e)=>s+(e.amount||0),0);
+  const operatingExp = overheadExp + variableExp;
+  const grossProfit  = sum(allStreams, 'profit');
   return {
     revInstore:   sum(SALES.instore,   'total'),
     revPottery:   sum(SALES.pottery,   'total'),
@@ -2294,33 +2315,34 @@ function getAllTimeData() {
     revClasses:   sum(SALES.classes,   'total'),
     totalRevenue: sum(allStreams, 'total'),
     totalCOGS:    sum(allStreams, 'cost'),
-    grossProfit:  sum(allStreams, 'profit'),
-    totalExpenses:EXPENSES.reduce((s,e)=>s+(e.amount||0),0),
-    overheadExp:EXPENSES.filter(e=>(!e.section||e.section==='overhead')).reduce((s,e)=>s+(e.amount||0),0),
-    variableExp:EXPENSES.filter(e=>e.section==='variable').reduce((s,e)=>s+(e.amount||0),0),
-    capitalExp:EXPENSES.filter(e=>e.section==='capital').reduce((s,e)=>s+(e.amount||0),0),
-    get netProfit() { return this.grossProfit - this.totalExpenses; },
+    grossProfit,
+    overheadExp,
+    variableExp,
+    capitalExp,
+    operatingExp,
+    netProfit: grossProfit - operatingExp,
   };
 }
 
 function renderDashboard() {
   populateDashMonthSelect();
   const sel = document.getElementById('dashMonthSelect');
-  // After populate, sel.value is set to the first (most recent) month unless we had a previous value
   const month = sel.value || currentYearMonth();
-  sel.value = month; // ensure it stays selected
+  sel.value = month;
   document.getElementById('dashSubtitle').textContent = `Overview for ${monthLabel(month)}`;
 
   const d = getMonthData(month);
 
+  // Monthly KPI stats — use operatingExp (overhead + variable), capital excluded
   document.getElementById('dashStats').innerHTML = `
     <div class="stat-card highlight"><div class="stat-label">Total Revenue</div><div class="stat-value">${fmt(d.totalRevenue)}</div></div>
     <div class="stat-card"><div class="stat-label">Cost of Goods Sold</div><div class="stat-value">${fmt(d.totalCOGS)}</div></div>
     <div class="stat-card green"><div class="stat-label">Gross Profit</div><div class="stat-value">${fmt(d.grossProfit)}</div></div>
-    <div class="stat-card red"><div class="stat-label">Overhead Expenses</div><div class="stat-value">${fmt(d.totalExpenses)}</div></div>
+    <div class="stat-card red"><div class="stat-label">Operating Expenses</div><div class="stat-value">${fmt(d.operatingExp)}</div><div class="stat-sub">Overhead + Variable</div></div>
     <div class="stat-card ${d.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value">${fmt(d.netProfit)}</div><div class="stat-sub">${d.netProfit>=0?'✓ Profitable':'↓ Loss this month'}</div></div>
   `;
 
+  // Revenue by stream
   document.getElementById('dashStreams').innerHTML = `
     <div class="cost-breakdown">
       <div class="cost-row"><span>🏪 In-Store Sales</span><span>${fmt(d.revInstore)}</span></div>
@@ -2333,6 +2355,29 @@ function renderDashboard() {
     </div>
   `;
 
+  // Operating expenses breakdown (overhead + variable only)
+  document.getElementById('dashExpenses').innerHTML = `
+    <div class="cost-breakdown">
+      <div class="cost-row"><span>🏠 Overhead Expenses</span><span>${fmt(d.overheadExp)}</span></div>
+      <div class="cost-row"><span>📦 Variable Expenses</span><span>${fmt(d.variableExp)}</span></div>
+      <div class="cost-row total"><span>Total Operating Expenses</span><span>${fmt(d.operatingExp)}</span></div>
+      <div class="cost-row" style="margin-top:0.6rem;padding-top:0.4rem;border-top:1px dashed var(--sand-dark);font-size:0.8rem;color:var(--ash);">
+        <span>Gross Profit</span><span>${fmt(d.grossProfit)}</span>
+      </div>
+      <div class="cost-row" style="font-weight:600;color:${d.netProfit>=0?'var(--glaze-green)':'#e05c5c'};">
+        <span>Net Profit</span><span>${fmt(d.netProfit)}</span>
+      </div>
+    </div>
+  `;
+
+  // Capital reinvestment — separate, not affecting profit
+  document.getElementById('dashCapital').innerHTML = d.capitalExp > 0 ? `
+    <div class="cost-breakdown">
+      <div class="cost-row"><span>🔧 Capital Investment this month</span><span style="font-weight:600;">${fmt(d.capitalExp)}</span></div>
+      <div style="font-size:0.78rem;color:var(--ash);margin-top:0.5rem;font-style:italic;">Capital reinvestment is tracked separately and does not affect your operating profit or loss.</div>
+    </div>
+  ` : '<div class="empty-state" style="padding:1rem;"><div style="font-size:0.85rem;color:var(--ash);">No capital reinvestment recorded this month.</div></div>';
+
   // All-time summary
   const at = getAllTimeData();
   const atEl = document.getElementById('dashAllTime');
@@ -2342,17 +2387,35 @@ function renderDashboard() {
         <div class="stat-card highlight"><div class="stat-label">Total Revenue</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalRevenue)}</div></div>
         <div class="stat-card"><div class="stat-label">Total COGS</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalCOGS)}</div></div>
         <div class="stat-card green"><div class="stat-label">Gross Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.grossProfit)}</div></div>
-        <div class="stat-card red"><div class="stat-label">Total Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalExpenses)}</div></div>
+        <div class="stat-card red"><div class="stat-label">Operating Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.operatingExp)}</div><div class="stat-sub">Overhead + Variable</div></div>
         <div class="stat-card ${at.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.netProfit)}</div><div class="stat-sub">${at.netProfit>=0?'✓ Overall profitable':'↓ Overall loss'}</div></div>
       </div>
-      <div class="cost-breakdown">
-        <div class="cost-row"><span>🏪 In-Store Sales</span><span>${fmt(at.revInstore)}</span></div>
-        <div class="cost-row"><span>🎨 Pottery Painting</span><span>${fmt(at.revPottery)}</span></div>
-        <div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(at.revWorkshop)}</span></div>
-        <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(at.revWholesale)}</span></div>
-        <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(at.revCustom)}</span></div>
-        <div class="cost-row"><span>🎓 Classes</span><span>${fmt(at.revClasses)}</span></div>
-        <div class="cost-row total"><span>Total Revenue</span><span>${fmt(at.totalRevenue)}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin-bottom:0.5rem;">Revenue by Stream</div>
+          <div class="cost-breakdown">
+            <div class="cost-row"><span>🏪 In-Store Sales</span><span>${fmt(at.revInstore)}</span></div>
+            <div class="cost-row"><span>🎨 Pottery Painting</span><span>${fmt(at.revPottery)}</span></div>
+            <div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(at.revWorkshop)}</span></div>
+            <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(at.revWholesale)}</span></div>
+            <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(at.revCustom)}</span></div>
+            <div class="cost-row"><span>🎓 Classes</span><span>${fmt(at.revClasses)}</span></div>
+            <div class="cost-row total"><span>Total Revenue</span><span>${fmt(at.totalRevenue)}</span></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin-bottom:0.5rem;">Expenses Summary</div>
+          <div class="cost-breakdown">
+            <div class="cost-row"><span>🏠 Overhead</span><span>${fmt(at.overheadExp)}</span></div>
+            <div class="cost-row"><span>📦 Variable</span><span>${fmt(at.variableExp)}</span></div>
+            <div class="cost-row total"><span>Total Operating</span><span>${fmt(at.operatingExp)}</span></div>
+          </div>
+          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin:0.8rem 0 0.5rem;">Capital Reinvestment (all time)</div>
+          <div class="cost-breakdown">
+            <div class="cost-row"><span>🔧 Capital Invested</span><span style="font-weight:600;">${fmt(at.capitalExp)}</span></div>
+            <div style="font-size:0.75rem;color:var(--ash);margin-top:0.4rem;font-style:italic;">Not included in profit calculation</div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -2494,8 +2557,14 @@ function exportMonthExcel(stream) {
       ['Cost & Profit', ''],
       ['Total Cost of Goods Sold', d.totalCOGS],
       ['Gross Profit',             d.grossProfit],
-      ['Overhead Expenses',        d.totalExpenses],
-      ['Net Profit',               d.netProfit],
+      [],
+      ['Operating Expenses', ''],
+      ['Overhead Expenses',   d.overheadExp],
+      ['Variable Expenses',   d.variableExp],
+      ['Total Operating Exp', d.operatingExp],
+      ['Net Profit',          d.netProfit],
+      [],
+      ['Capital Reinvestment (not in profit)', d.capitalExp],
     ];
     const wsSummary = XLSX.utils.aoa_to_sheet(sumData);
     wsSummary['!cols'] = [{wch:26},{wch:18}];
