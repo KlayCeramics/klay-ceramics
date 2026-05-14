@@ -469,7 +469,6 @@
   <div class="month-selector">
     <label style="font-size:0.78rem;color:var(--ash);text-transform:uppercase;letter-spacing:0.06em;">View Month</label>
     <select id="dashMonthSelect" onchange="renderDashboard()"></select>
-    <button class="btn btn-secondary btn-sm" onclick="saveMonthSnapshot()">📸 Save Snapshot</button>
   </div>
 
   <div class="stats-grid" id="dashStats"></div>
@@ -478,10 +477,6 @@
     <div class="card">
       <div class="card-title">Revenue by Stream</div>
       <div id="dashStreams"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Saved Monthly Snapshots</div>
-      <div id="dashSnapshots"></div>
     </div>
   </div>
 
@@ -513,10 +508,6 @@
       <div class="form-group">
         <label>Cost per kg of Plaster (USD)</label>
         <input type="number" id="c_plaster" step="0.01" placeholder="50.00" oninput="saveCosts()">
-      </div>
-      <div class="form-group">
-        <label>Labour Cost per Piece (USD)</label>
-        <input type="number" id="c_labour" step="0.01" placeholder="25.00" oninput="saveCosts()">
       </div>
       <div class="form-group">
         <label>Bisque Fire Total Cost (USD)</label>
@@ -793,47 +784,145 @@
 
 <!-- ══════════════ EXPENSES ══════════════ -->
 <div class="page" id="page-expenses">
-  <div class="section-title">Overhead Expenses</div>
-  <div class="section-sub">Track monthly running costs for the studio.</div>
+  <div class="section-title">Expenses</div>
+  <div class="section-sub">Track all studio expenditure across three accounting categories.</div>
 
-  <div class="card">
-    <div class="card-title">Add Expense</div>
-    <div class="form-grid wide">
-      <div class="form-group"><label>Date</label><input type="date" id="exp_date"></div>
-      <div class="form-group"><label>Category</label>
-        <select id="exp_cat">
-          <option>Rent</option><option>Utilities (Zesa)</option><option>Water</option>
-          <option>Wages</option><option>Materials</option><option>Equipment</option>
-          <option>Marketing</option><option>Transport</option><option>Insurance</option><option>Other</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Description</label><input type="text" id="exp_desc"></div>
-      <div class="form-group"><label>Amount (USD)</label><input type="number" id="exp_amount" step="0.01"></div>
-    </div>
-    <div class="form-group" style="margin-top:0.75rem;">
-      <label>Invoice / Receipt (optional)</label>
-      <div class="invoice-upload-area" id="invoiceDropArea" onclick="document.getElementById('exp_invoice').click()" ondragover="event.preventDefault();this.style.borderColor='var(--clay)'" ondragleave="this.style.borderColor=''" ondrop="handleInvoiceDrop(event)">
-        <div id="invoicePreviewArea">
-          <div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div>
-          <div>Click to attach invoice or receipt</div>
-          <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>
-        </div>
-      </div>
-      <input type="file" id="exp_invoice" accept="image/*,application/pdf" style="display:none" onchange="handleInvoiceSelect(this)">
-    </div>
-    <div class="flex-end"><button class="btn btn-primary" onclick="addExpense()">Add Expense</button></div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchExpenseTab('overhead')">🏠 Overhead</button>
+    <button class="tab-btn" onclick="switchExpenseTab('variable')">📦 Variable</button>
+    <button class="tab-btn" onclick="switchExpenseTab('capital')">🔧 Capital Reinvestment</button>
   </div>
 
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
-      <div class="card-title" style="margin:0;border:none;padding:0;">Expense Log</div>
-      <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-        <label style="font-size:0.78rem;color:var(--ash);">Filter:</label>
-        <select id="expMonthFilter" onchange="renderExpenses()" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
-        <button class="btn btn-secondary btn-sm" onclick="exportExpensesExcel()">⬇ Export Excel</button>
-      </div>
+  <!-- OVERHEAD TAB -->
+  <div class="tab-pane active" id="etab-overhead">
+    <div style="background:var(--sand);border-radius:8px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--ash);border-left:3px solid var(--clay);">
+      <strong style="color:var(--clay-dark);">Overhead Expenses</strong> — Fixed recurring costs that exist regardless of production volume: rent, utilities, insurance, wages, subscriptions.
     </div>
-    <div id="expenseLog"></div>
+    <div class="card">
+      <div class="card-title">Add Overhead Expense</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="exp_oh_date"></div>
+        <div class="form-group"><label>Category</label>
+          <select id="exp_oh_cat">
+            <option>Rent</option><option>Utilities (Zesa)</option><option>Water</option>
+            <option>Wages / Salaries</option><option>Insurance</option>
+            <option>Internet / Phone</option><option>Subscriptions</option><option>Other Fixed Cost</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Description</label><input type="text" id="exp_oh_desc"></div>
+        <div class="form-group"><label>Amount (USD)</label><input type="number" id="exp_oh_amount" step="0.01"></div>
+      </div>
+      <div class="form-group" style="margin-top:0.75rem;">
+        <label>Invoice / Receipt (optional)</label>
+        <div class="invoice-upload-area" id="invoiceDropArea-oh" onclick="document.getElementById('exp_oh_invoice').click()" ondragover="event.preventDefault();this.style.borderColor='var(--clay)'" ondragleave="this.style.borderColor=''" ondrop="handleInvoiceDropFor(event,'oh')">
+          <div id="invoicePreviewArea-oh">
+            <div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div>
+            <div>Click to attach invoice or receipt</div>
+            <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>
+          </div>
+        </div>
+        <input type="file" id="exp_oh_invoice" accept="image/*,application/pdf" style="display:none" onchange="handleInvoiceSelectFor(this,'oh')">
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addExpense('overhead')">Add Expense</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Overhead Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="expMonthFilter-oh" onchange="renderExpenses('overhead')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportExpensesExcel('overhead')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="expenseLog-overhead"></div>
+    </div>
+  </div>
+
+  <!-- VARIABLE TAB -->
+  <div class="tab-pane" id="etab-variable">
+    <div style="background:var(--sand);border-radius:8px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--ash);border-left:3px solid var(--glaze-blue);">
+      <strong style="color:var(--clay-dark);">Variable Expenses</strong> — Costs that fluctuate directly with production output: raw materials (clay, glaze, plaster), packaging, firing supplies, transport per order.
+    </div>
+    <div class="card">
+      <div class="card-title">Add Variable Expense</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="exp_va_date"></div>
+        <div class="form-group"><label>Category</label>
+          <select id="exp_va_cat">
+            <option>Clay</option><option>Glaze Materials</option><option>Plaster</option>
+            <option>Kiln Supplies</option><option>Packaging</option><option>Firing Costs</option>
+            <option>Workshop Supplies</option><option>Transport / Delivery</option><option>Other Variable</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Description</label><input type="text" id="exp_va_desc"></div>
+        <div class="form-group"><label>Amount (USD)</label><input type="number" id="exp_va_amount" step="0.01"></div>
+      </div>
+      <div class="form-group" style="margin-top:0.75rem;">
+        <label>Invoice / Receipt (optional)</label>
+        <div class="invoice-upload-area" id="invoiceDropArea-va" onclick="document.getElementById('exp_va_invoice').click()" ondragover="event.preventDefault();this.style.borderColor='var(--clay)'" ondragleave="this.style.borderColor=''" ondrop="handleInvoiceDropFor(event,'va')">
+          <div id="invoicePreviewArea-va">
+            <div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div>
+            <div>Click to attach invoice or receipt</div>
+            <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>
+          </div>
+        </div>
+        <input type="file" id="exp_va_invoice" accept="image/*,application/pdf" style="display:none" onchange="handleInvoiceSelectFor(this,'va')">
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addExpense('variable')">Add Expense</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Variable Expense Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="expMonthFilter-va" onchange="renderExpenses('variable')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportExpensesExcel('variable')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="expenseLog-variable"></div>
+    </div>
+  </div>
+
+  <!-- CAPITAL TAB -->
+  <div class="tab-pane" id="etab-capital">
+    <div style="background:var(--sand);border-radius:8px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--ash);border-left:3px solid var(--glaze-green);">
+      <strong style="color:var(--clay-dark);">Capital Reinvestment</strong> — Significant purchases that improve or expand the business long-term: equipment, kiln, moulds, machinery, studio improvements, tools with multi-year lifespan.
+    </div>
+    <div class="card">
+      <div class="card-title">Add Capital Item</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="exp_ca_date"></div>
+        <div class="form-group"><label>Category</label>
+          <select id="exp_ca_cat">
+            <option>Kiln / Equipment</option><option>Moulds</option><option>Tools</option>
+            <option>Studio Improvements</option><option>Furniture / Fixtures</option>
+            <option>Machinery</option><option>Technology</option><option>Other Capital</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Description</label><input type="text" id="exp_ca_desc"></div>
+        <div class="form-group"><label>Amount (USD)</label><input type="number" id="exp_ca_amount" step="0.01"></div>
+      </div>
+      <div class="form-group" style="margin-top:0.75rem;">
+        <label>Invoice / Receipt (optional)</label>
+        <div class="invoice-upload-area" id="invoiceDropArea-ca" onclick="document.getElementById('exp_ca_invoice').click()" ondragover="event.preventDefault();this.style.borderColor='var(--clay)'" ondragleave="this.style.borderColor=''" ondrop="handleInvoiceDropFor(event,'ca')">
+          <div id="invoicePreviewArea-ca">
+            <div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div>
+            <div>Click to attach invoice or receipt</div>
+            <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>
+          </div>
+        </div>
+        <input type="file" id="exp_ca_invoice" accept="image/*,application/pdf" style="display:none" onchange="handleInvoiceSelectFor(this,'ca')">
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addExpense('capital')">Add Expense</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Capital Investment Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="expMonthFilter-ca" onchange="renderExpenses('capital')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportExpensesExcel('capital')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="expenseLog-capital"></div>
+    </div>
   </div>
 </div>
 
@@ -1077,6 +1166,57 @@
   </div>
 </div>
 
+
+<!-- ══════════════ EXPENSE EDIT MODAL ══════════════ -->
+<div class="modal-overlay" id="expEditModal" onclick="if(event.target===this)closeExpenseEdit()">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">Edit Expense</div>
+      <button class="modal-close" onclick="closeExpenseEdit()">✕</button>
+    </div>
+    <input type="hidden" id="expEdit_id">
+    <input type="hidden" id="expEdit_section">
+    <div class="form-grid wide">
+      <div class="form-group"><label>Date</label><input type="date" id="expEdit_date"></div>
+      <div class="form-group"><label>Category</label><input type="text" id="expEdit_cat"></div>
+      <div class="form-group"><label>Description</label><input type="text" id="expEdit_desc"></div>
+      <div class="form-group"><label>Amount (USD)</label><input type="number" id="expEdit_amount" step="0.01"></div>
+    </div>
+    <div class="flex-end" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeExpenseEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExpenseEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SALE EDIT MODAL ══════════════ -->
+<div class="modal-overlay" id="saleEditModal" onclick="if(event.target===this)closeSaleEdit()">
+  <div class="modal-box" style="max-width:600px;">
+    <div class="modal-header">
+      <div class="modal-title">Edit Sale</div>
+      <button class="modal-close" onclick="closeSaleEdit()">✕</button>
+    </div>
+    <input type="hidden" id="saleEdit_id">
+    <input type="hidden" id="saleEdit_stream">
+    <div class="form-grid wide">
+      <div class="form-group"><label>Date</label><input type="date" id="saleEdit_date"></div>
+      <div class="form-group"><label>Product / Client / Category</label><input type="text" id="saleEdit_cat"></div>
+      <div class="form-group"><label>Description</label><input type="text" id="saleEdit_desc"></div>
+      <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="saleEdit_price" step="0.01" oninput="calcSaleEditTotal()"></div>
+      <div class="form-group"><label>Quantity</label><input type="number" id="saleEdit_qty" step="1" oninput="calcSaleEditTotal()"></div>
+      <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="saleEdit_cost" step="0.01" value="0" oninput="calcSaleEditTotal()"></div>
+      <div class="form-group"><label>Discount (USD)</label><input type="number" id="saleEdit_disc" step="0.01" value="0" oninput="calcSaleEditTotal()"></div>
+      <div class="form-group"><label>Total (auto)</label><input type="text" id="saleEdit_total" readonly style="background:var(--sand);font-weight:600;"></div>
+      <div class="form-group"><label>Profit (auto)</label><input type="text" id="saleEdit_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+      <div class="form-group"><label>Notes</label><input type="text" id="saleEdit_notes"></div>
+    </div>
+    <div class="flex-end" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeSaleEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSaleEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- end app-body -->
 
 <script>
@@ -1231,7 +1371,7 @@ async function ensureSheetTabs() {
 }
 
 let COSTS = load(KEYS.costs) || {
-  clay: 0, clayWhite: 0, clayTerra: 0, plaster: 0, labour: 0, bisque: 0, glazeFire: 0, glazeG: 0
+  clay: 0, clayWhite: 0, clayTerra: 0, plaster: 0, bisque: 0, glazeFire: 0, glazeG: 0
 };
 if (!COSTS.clayWhite && COSTS.clay) COSTS.clayWhite = COSTS.clay; // migrate old single clay value
 if (!COSTS.clayTerra) COSTS.clayTerra = 0;
@@ -1275,7 +1415,7 @@ function calcProductCost(p) {
   const clayRate   = (p.clayType === 'terra') ? (c.clayTerra || 0) : (c.clayWhite || 0);
   const clayCost   = (p.clay    || 0) * clayRate;
   const plasterCost= (p.plaster || 0) * (c.plaster || 0) / 1000 / 90;
-  const labourCost = (c.labour  || 0);
+  const labourCost = 0;
   const bisqueCost = p.bisqueCap ? (c.bisque    || 0) / p.bisqueCap : 0;
   const glazeCost  = (p.glaze   || 0) * (c.glazeG  || 0);
   const glazeFireCost = p.glazeCap  ? (c.glazeFire || 0) / p.glazeCap  : 0;
@@ -1309,7 +1449,7 @@ function showPage(id) {
   if (id === 'sales') { populateSalesDropdowns(); renderAllSalesLogs(); }
   if (id === 'costs') renderCostsSummary();
   if (id === 'products') { renderCatalogue('shop'); renderCatalogue('pp'); }
-  if (id === 'expenses') { populateExpenseMonthFilter(); renderExpenses(); }
+  if (id === 'expenses') { ['overhead','variable','capital'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); }); }
   if (id === 'quote') calcQuote();
   if (id === 'float') renderFloat();
 }
@@ -1336,6 +1476,15 @@ function switchStockTab(tab) {
   event.target.classList.add('active');
 }
 
+function switchExpenseTab(tab) {
+  document.querySelectorAll('[id^="etab-"]').forEach(t => t.classList.remove('active'));
+  document.getElementById('etab-' + tab).classList.add('active');
+  document.querySelectorAll('#page-expenses .tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  populateExpenseMonthFilter(tab);
+  renderExpenses(tab);
+}
+
 // ══════════════════════════════════════════
 //  COSTS
 // ══════════════════════════════════════════
@@ -1344,12 +1493,12 @@ function saveCosts() {
     clayWhite:parseFloat(document.getElementById('c_clay_white').value) || 0,
     clayTerra:parseFloat(document.getElementById('c_clay_terra').value) || 0,
     plaster:  parseFloat(document.getElementById('c_plaster').value)    || 0,
-    labour:   parseFloat(document.getElementById('c_labour').value)     || 0,
     bisque:   parseFloat(document.getElementById('c_bisque').value)     || 0,
     glazeFire:parseFloat(document.getElementById('c_glaze_fire').value) || 0,
     glazeG:   parseFloat(document.getElementById('c_glaze_g').value)    || 0,
   };
   COSTS.clay = COSTS.clayWhite; // keep legacy compat
+  COSTS.labour = 0; // removed, keep at 0 for safety
   save(KEYS.costs, COSTS);
   renderCostsSummary();
 }
@@ -1358,7 +1507,6 @@ function loadCostInputs() {
   document.getElementById('c_clay_white').value = COSTS.clayWhite  || '';
   document.getElementById('c_clay_terra').value = COSTS.clayTerra  || '';
   document.getElementById('c_plaster').value    = COSTS.plaster    || '';
-  document.getElementById('c_labour').value     = COSTS.labour     || '';
   document.getElementById('c_bisque').value     = COSTS.bisque     || '';
   document.getElementById('c_glaze_fire').value = COSTS.glazeFire  || '';
   document.getElementById('c_glaze_g').value    = COSTS.glazeG     || '';
@@ -1371,7 +1519,6 @@ function renderCostsSummary() {
     <div class="cost-row"><span>White Clay (per gram)</span><span>${fmt(COSTS.clayWhite)}</span></div>
     <div class="cost-row"><span>Terracotta (per gram)</span><span>${fmt(COSTS.clayTerra)}</span></div>
     <div class="cost-row"><span>Plaster (per kg)</span><span>${fmt(COSTS.plaster)}</span></div>
-    <div class="cost-row"><span>Labour (per piece)</span><span>${fmt(COSTS.labour)}</span></div>
     <div class="cost-row"><span>Bisque fire (total)</span><span>${fmt(COSTS.bisque)}</span></div>
     <div class="cost-row"><span>Glaze fire (total)</span><span>${fmt(COSTS.glazeFire)}</span></div>
     <div class="cost-row"><span>Glaze (per gram)</span><span>${fmt(COSTS.glazeG)}</span></div>
@@ -1386,7 +1533,6 @@ function buildPreviewHTML(p) {
   return `
     <div class="cost-row"><span>${c.clayTypeLabel||'White Clay'} cost (${p.clay||0}g × ${fmt(c.clayRate||0)}/g)</span><span>${fmt(c.clayCost)}</span></div>
     <div class="cost-row"><span>Plaster cost (${p.plaster||0}g ÷ 1000 × ${fmt(COSTS.plaster)}/kg ÷ 90 uses)</span><span>${fmt(c.plasterCost)}</span></div>
-    <div class="cost-row"><span>Labour (set rate)</span><span>${fmt(c.labourCost)}</span></div>
     <div class="cost-row"><span>Bisque fire (${fmt(COSTS.bisque)} ÷ ${p.bisqueCap||'?'} items)</span><span>${fmt(c.bisqueCost)}</span></div>
     <div class="cost-row"><span>Glaze cost (${p.glaze||0}g × ${fmt(COSTS.glazeG)}/g)</span><span>${fmt(c.glazeCost)}</span></div>
     <div class="cost-row"><span>Glaze fire (${fmt(COSTS.glazeFire)} ÷ ${p.glazeCap||'?'} items)</span><span>${fmt(c.glazeFireCost)}</span></div>
@@ -1835,7 +1981,7 @@ function renderSalesLog(stream) {
         <td class="num"><strong>${fmt(s.total)}</strong></td>
         <td class="num ${(s.profit||0)>=0?'profit-pos':'profit-neg'}">${fmt(s.profit||0)}</td>
         <td>${s.notes||'—'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteSale('${stream}',${s.id})">✕</button></td>
+        <td style="display:flex;gap:0.3rem;"><button class="btn btn-ghost btn-sm" onclick="openSaleEdit('${stream}',${s.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteSale('${stream}',${s.id})">✕</button></td>
       </tr>`).join('')}
       <tr style="background:var(--sand);font-weight:600;">
         <td colspan="6" style="text-align:right;padding-right:0.8rem;">Period Total</td>
@@ -1907,26 +2053,31 @@ function clearInvoice(event) {
     <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>`;
 }
 
-function addExpense() {
-  const date = document.getElementById('exp_date').value;
-  const amount = parseFloat(document.getElementById('exp_amount').value) || 0;
+const SECTION_CODES = { overhead:'oh', variable:'va', capital:'ca' };
+
+function addExpense(section) {
+  section = section || 'overhead';
+  const sc = SECTION_CODES[section];
+  const date   = document.getElementById(`exp_${sc}_date`).value;
+  const amount = parseFloat(document.getElementById(`exp_${sc}_amount`).value) || 0;
   if (!date || !amount) { showAlert('Please enter date and amount.','error'); return; }
   const exp = {
     id: Date.now(),
     date,
-    cat: document.getElementById('exp_cat').value,
-    desc: document.getElementById('exp_desc').value,
+    section,
+    cat:     document.getElementById(`exp_${sc}_cat`).value,
+    desc:    document.getElementById(`exp_${sc}_desc`).value,
     amount,
-    invoice: pendingInvoiceData || null,
+    invoice: pendingInvoiceDataFor[sc] || null,
   };
   EXPENSES.push(exp);
   save(KEYS.expenses, EXPENSES);
-  populateExpenseMonthFilter();
-  renderExpenses();
-  document.getElementById('exp_date').value = '';
-  document.getElementById('exp_desc').value = '';
-  document.getElementById('exp_amount').value = '';
-  clearInvoice({ stopPropagation: () => {} });
+  populateExpenseMonthFilter(section);
+  renderExpenses(section);
+  document.getElementById(`exp_${sc}_date`).value = '';
+  document.getElementById(`exp_${sc}_desc`).value = '';
+  document.getElementById(`exp_${sc}_amount`).value = '';
+  clearInvoiceFor({ stopPropagation: () => {} }, sc);
   showAlert('Expense added.');
 }
 
@@ -1944,30 +2095,75 @@ function viewInvoice(id) {
   }
 }
 
-function deleteExpense(id) {
-  if (!confirm('Delete this expense?')) return;
-  EXPENSES = EXPENSES.filter(e => e.id !== id);
+function deleteExpense(id, section) {
+  id = Number(id);
+  if (!window.confirm('Delete this expense?')) return;
+  EXPENSES = EXPENSES.filter(e => Number(e.id) !== id);
   save(KEYS.expenses, EXPENSES);
-  renderExpenses();
+  renderExpenses(section || 'overhead');
   showAlert('Expense deleted.');
 }
 
-function populateExpenseMonthFilter() {
-  const sel = document.getElementById('expMonthFilter');
-  if (!sel) return;
-  const months = getAllMonths();
-  sel.innerHTML = months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+function openExpenseEdit(id, section) {
+  id = Number(id);
+  const exp = EXPENSES.find(e => Number(e.id) === id);
+  if (!exp) return;
+  document.getElementById('expEditModal').style.display = 'flex';
+  document.getElementById('expEdit_id').value = id;
+  document.getElementById('expEdit_section').value = exp.section || section || 'overhead';
+  document.getElementById('expEdit_date').value = exp.date || '';
+  document.getElementById('expEdit_cat').value = exp.cat || '';
+  document.getElementById('expEdit_desc').value = exp.desc || '';
+  document.getElementById('expEdit_amount').value = exp.amount || '';
 }
 
-function renderExpenses() {
-  const sel = document.getElementById('expMonthFilter');
-  const month = sel ? sel.value : currentYearMonth();
-  const el = document.getElementById('expenseLog');
+function closeExpenseEdit() {
+  document.getElementById('expEditModal').style.display = 'none';
+}
+
+function saveExpenseEdit() {
+  const id = Number(document.getElementById('expEdit_id').value);
+  const exp = EXPENSES.find(e => Number(e.id) === id);
+  if (!exp) return;
+  exp.date   = document.getElementById('expEdit_date').value;
+  exp.cat    = document.getElementById('expEdit_cat').value;
+  exp.desc   = document.getElementById('expEdit_desc').value;
+  exp.amount = parseFloat(document.getElementById('expEdit_amount').value) || 0;
+  save(KEYS.expenses, EXPENSES);
+  closeExpenseEdit();
+  renderExpenses(exp.section || 'overhead');
+  showAlert('Expense updated.');
+}
+
+function populateExpenseMonthFilter(section) {
+  section = section || 'overhead';
+  const sc = SECTION_CODES[section];
+  const sel = document.getElementById(`expMonthFilter-${sc}`);
+  if (!sel) return;
+  const months = getAllMonths();
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">All Time</option>' + months.map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+  else if (months.length) sel.value = months[0];
+}
+
+function renderExpenses(section) {
+  section = section || 'overhead';
+  const sc = SECTION_CODES[section];
+  const sel = document.getElementById(`expMonthFilter-${sc}`);
+  const month = sel ? sel.value : 'all';
+  const el = document.getElementById(`expenseLog-${section}`);
   if (!el) return;
-  const data = EXPENSES.filter(e => e.date && e.date.startsWith(month)).sort((a,b)=>b.date.localeCompare(a.date));
-  const total = data.reduce((s,e) => s + e.amount, 0);
+  // Filter by section (old entries without section field fall into overhead)
+  let data = EXPENSES.filter(e => {
+    const esec = e.section || 'overhead';
+    return esec === section;
+  });
+  if (month !== 'all') data = data.filter(e => e.date && e.date.startsWith(month));
+  data.sort((a,b) => b.date.localeCompare(a.date));
+  const total = data.reduce((s,e) => s + (e.amount||0), 0);
   if (!data.length) {
-    el.innerHTML = '<div class="empty-state"><div class="ei">💸</div>No expenses recorded for this month.</div>';
+    el.innerHTML = '<div class="empty-state"><div class="ei">💸</div>No expenses recorded for this period.</div>';
     return;
   }
   el.innerHTML = `
@@ -1980,10 +2176,13 @@ function renderExpenses() {
           <td>${e.desc||'—'}</td>
           <td class="num">${fmt(e.amount)}</td>
           <td style="text-align:center;">${e.invoice ? `<button class="btn btn-ghost btn-sm" onclick="viewInvoice(${e.id})" title="View invoice">📎 View</button>` : '<span style="color:var(--ash);font-size:0.75rem;">—</span>'}</td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.id})">✕</button></td>
+          <td style="display:flex;gap:0.3rem;">
+            <button class="btn btn-ghost btn-sm" onclick="openExpenseEdit(${e.id},'${section}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.id},'${section}')">✕</button>
+          </td>
         </tr>`).join('')}
         <tr style="background:var(--sand);font-weight:600;">
-          <td colspan="4">Total Expenses</td><td class="num">${fmt(total)}</td><td></td>
+          <td colspan="3">Total</td><td class="num">${fmt(total)}</td><td colspan="2"></td>
         </tr>
       </tbody>
     </table></div>
@@ -2097,6 +2296,9 @@ function getAllTimeData() {
     totalCOGS:    sum(allStreams, 'cost'),
     grossProfit:  sum(allStreams, 'profit'),
     totalExpenses:EXPENSES.reduce((s,e)=>s+(e.amount||0),0),
+    overheadExp:EXPENSES.filter(e=>(!e.section||e.section==='overhead')).reduce((s,e)=>s+(e.amount||0),0),
+    variableExp:EXPENSES.filter(e=>e.section==='variable').reduce((s,e)=>s+(e.amount||0),0),
+    capitalExp:EXPENSES.filter(e=>e.section==='capital').reduce((s,e)=>s+(e.amount||0),0),
     get netProfit() { return this.grossProfit - this.totalExpenses; },
   };
 }
@@ -2155,42 +2357,9 @@ function renderDashboard() {
     `;
   }
 
-  renderSnapshots();
 }
 
-function saveMonthSnapshot() {
-  const sel = document.getElementById('dashMonthSelect');
-  const month = sel.value || currentYearMonth();
-  const d = getMonthData(month);
-  const existing = SNAPSHOTS.findIndex(s => s.month === month);
-  const snap = { month, label: monthLabel(month), ...d, savedAt: new Date().toISOString() };
-  if (existing >= 0) SNAPSHOTS[existing] = snap;
-  else SNAPSHOTS.push(snap);
-  save(KEYS.snapshots, SNAPSHOTS);
-  renderSnapshots();
-  showAlert(`Snapshot saved for ${monthLabel(month)}.`);
-}
-
-function renderSnapshots() {
-  const el = document.getElementById('dashSnapshots');
-  if (!el) return;
-  if (!SNAPSHOTS.length) {
-    el.innerHTML = '<div class="empty-state"><div class="ei">📸</div>No snapshots saved yet. Save a snapshot to archive a month\'s summary.</div>';
-    return;
-  }
-  const sorted = [...SNAPSHOTS].sort((a,b)=>b.month.localeCompare(a.month));
-  el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Month</th><th>Revenue</th><th>Expenses</th><th>Net Profit</th></tr></thead>
-    <tbody>
-      ${sorted.map(s=>`<tr>
-        <td>${s.label}</td>
-        <td class="num">${fmt(s.totalRevenue)}</td>
-        <td class="num">${fmt(s.totalExpenses)}</td>
-        <td class="num ${s.netProfit>=0?'profit-pos':'profit-neg'}">${fmt(s.netProfit)}</td>
-      </tr>`).join('')}
-    </tbody>
-  </table></div>`;
-}
+// Snapshots removed
 
 // ══════════════════════════════════════════
 //  QUOTE ESTIMATOR
@@ -2250,7 +2419,7 @@ function calcQuote() {
   const qClayType  = document.getElementById('q_clay_type')?.value || 'white';
   const qClayRate  = qClayType === 'terra' ? (COSTS.clayTerra || 0) : (COSTS.clayWhite || 0);
   const clayCost   = clayWeight * qClayRate;
-  const labourCost = (COSTS.labour || 0) * complexity;
+  const labourCost = 0;
   const glazeCost  = glazeG * (COSTS.glazeG || 0);
   const bisqueCost = (firing==='both'||firing==='bisque') ? (COSTS.bisque||0)/kilnCap : 0;
   const glazeFireCost=(firing==='both'||firing==='glaze') ? (COSTS.glazeFire||0)/kilnCap : 0;
@@ -2263,7 +2432,6 @@ function calcQuote() {
 
   document.getElementById('quoteBreakdown').innerHTML = `
     <div class="cost-row"><span>${qClayType==='terra'?'Terracotta':'White Clay'} (${clayWeight.toFixed(0)}g × ${fmt(qClayRate)}/g)</span><span>${fmt(clayCost)}</span></div>
-    <div class="cost-row"><span>Labour (× ${complexity} complexity)</span><span>${fmt(labourCost)}</span></div>
     <div class="cost-row"><span>Glaze (${glazeG}g × ${fmt(COSTS.glazeG)}/g)</span><span>${fmt(glazeCost)}</span></div>
     <div class="cost-row"><span>Bisque fire (${fmt(COSTS.bisque)} ÷ ${kilnCap})</span><span>${fmt(bisqueCost)}</span></div>
     <div class="cost-row"><span>Glaze fire (${fmt(COSTS.glazeFire)} ÷ ${kilnCap})</span><span>${fmt(glazeFireCost)}</span></div>
@@ -2352,43 +2520,40 @@ function exportMonthExcel(stream) {
 }
 
 
-function exportExpensesExcel() {
+function exportExpensesExcel(section) {
   if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded. Please check your internet connection.','error'); return; }
-  const sel = document.getElementById('expMonthFilter');
+  section = section || 'overhead';
+  const sc = SECTION_CODES[section];
+  const sel = document.getElementById(`expMonthFilter-${sc}`);
   const month = sel ? sel.value : 'all';
-  const monthStr = month === 'all' ? 'All Months' : monthLabel(month);
-  const expData = (month === 'all' ? [...EXPENSES] : EXPENSES.filter(e => e.date && e.date.startsWith(month)))
-    .sort((a,b) => a.date.localeCompare(b.date));
+  const monthStr = month === 'all' ? 'All Time' : monthLabel(month);
+  const sectionLabels = { overhead:'Overhead Expenses', variable:'Variable Expenses', capital:'Capital Reinvestment' };
+
+  let expData = EXPENSES.filter(e => (e.section || 'overhead') === section);
+  if (month !== 'all') expData = expData.filter(e => e.date && e.date.startsWith(month));
+  expData.sort((a,b) => a.date.localeCompare(b.date));
 
   if (!expData.length) { showAlert('No expenses to export for this period.','error'); return; }
 
   const wb = XLSX.utils.book_new();
-
-  // ── Sheet 1: Expense Detail ──
   const headers = ['Date', 'Category', 'Description', 'Amount (USD)'];
   const rows = expData.map(e => [e.date, e.cat, e.desc || '', e.amount || 0]);
-  const totalRow = ['TOTAL', '', '', expData.reduce((a,e) => a + (e.amount||0), 0)];
-  const wsData = [['Klay Ceramics — Expenses', monthStr], [], headers, ...rows, [], totalRow];
+  const totalRow = ['TOTAL', '', '', expData.reduce((a,e) => a+(e.amount||0), 0)];
+  const wsData = [['Klay Ceramics — ' + sectionLabels[section], monthStr], [], headers, ...rows, [], totalRow];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:12},{wch:20},{wch:30},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
+  ws['!cols'] = [{wch:12},{wch:22},{wch:32},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, sectionLabels[section].slice(0,31));
 
-  // ── Sheet 2: Category Summary ──
   const catTotals = {};
   expData.forEach(e => { catTotals[e.cat] = (catTotals[e.cat]||0) + (e.amount||0); });
-  const catRows = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-  const wsCatData = [
-    ['Category Summary', monthStr], [],
-    ['Category', 'Total (USD)'],
-    ...catRows,
-    [],
-    ['GRAND TOTAL', expData.reduce((a,e)=>a+(e.amount||0),0)]
-  ];
+  const wsCatData = [['By Category', monthStr], [], ['Category','Total (USD)'],
+    ...Object.entries(catTotals).sort((a,b)=>b[1]-a[1]), [],
+    ['GRAND TOTAL', expData.reduce((a,e)=>a+(e.amount||0),0)]];
   const wsCat = XLSX.utils.aoa_to_sheet(wsCatData);
-  wsCat['!cols'] = [{wch:22},{wch:16}];
+  wsCat['!cols'] = [{wch:24},{wch:16}];
   XLSX.utils.book_append_sheet(wb, wsCat, 'By Category');
 
-  const filename = `KlayCeramics_Expenses_${month==='all'?'AllMonths':month}.xlsx`;
+  const filename = `KlayCeramics_${section}_${month==='all'?'AllTime':month}.xlsx`;
   XLSX.writeFile(wb, filename);
   showAlert(`Exported: ${filename}`);
 }
@@ -2560,6 +2725,122 @@ function exportFloatExcel() {
 // ══════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════
+
+// Multi-section invoice handlers
+let pendingInvoiceDataFor = { oh: null, va: null, ca: null };
+
+function handleInvoiceSelectFor(input, section) {
+  const file = input.files[0];
+  if (!file) return;
+  readInvoiceFileFor(file, section);
+}
+
+function handleInvoiceDropFor(event, section) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  readInvoiceFileFor(file, section);
+}
+
+function readInvoiceFileFor(file, section) {
+  if (file.size > 3 * 1024 * 1024) { showAlert('File is large (>3MB). Consider compressing.', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    pendingInvoiceDataFor[section] = e.target.result;
+    const area = document.getElementById('invoiceDropArea-' + section);
+    const preview = document.getElementById('invoicePreviewArea-' + section);
+    area.classList.add('has-file');
+    if (file.type.startsWith('image/')) {
+      preview.innerHTML = `<img src="${e.target.result}" class="invoice-thumb" alt="Invoice"><div style="margin-top:0.4rem;font-size:0.78rem;">${file.name} ✓</div><button class="btn btn-ghost btn-sm" style="margin-top:0.3rem;" onclick="clearInvoiceFor(event,'${section}')">Remove</button>`;
+    } else {
+      preview.innerHTML = `<div class="invoice-doc-icon">📄</div><div style="font-size:0.82rem;">${file.name} ✓</div><button class="btn btn-ghost btn-sm" style="margin-top:0.3rem;" onclick="clearInvoiceFor(event,'${section}')">Remove</button>`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearInvoiceFor(event, section) {
+  event.stopPropagation();
+  pendingInvoiceDataFor[section] = null;
+  const area = document.getElementById('invoiceDropArea-' + section);
+  const preview = document.getElementById('invoicePreviewArea-' + section);
+  area.classList.remove('has-file');
+  preview.innerHTML = '<div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div><div>Click to attach invoice or receipt</div><div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>';
+}
+
+
+// ══════════════════════════════════════════
+//  SALE EDIT
+// ══════════════════════════════════════════
+function openSaleEdit(stream, id) {
+  id = Number(id);
+  const sale = SALES[stream].find(s => Number(s.id) === id);
+  if (!sale) return;
+  document.getElementById('saleEditModal').style.display = 'flex';
+  document.getElementById('saleEdit_id').value     = id;
+  document.getElementById('saleEdit_stream').value = stream;
+  document.getElementById('saleEdit_date').value   = sale.date || '';
+  document.getElementById('saleEdit_cat').value    = sale.productName || sale.cat || '';
+  document.getElementById('saleEdit_desc').value   = sale.desc || '';
+  document.getElementById('saleEdit_price').value  = sale.price || 0;
+  document.getElementById('saleEdit_qty').value    = sale.qty || 1;
+  document.getElementById('saleEdit_cost').value   = sale.unitCost || (sale.cost ? sale.cost / (sale.qty||1) : 0);
+  document.getElementById('saleEdit_disc').value   = sale.disc || 0;
+  document.getElementById('saleEdit_notes').value  = sale.notes || '';
+  calcSaleEditTotal();
+}
+
+function closeSaleEdit() {
+  document.getElementById('saleEditModal').style.display = 'none';
+}
+
+function calcSaleEditTotal() {
+  const price = parseFloat(document.getElementById('saleEdit_price').value) || 0;
+  const qty   = parseFloat(document.getElementById('saleEdit_qty').value)   || 1;
+  const cost  = parseFloat(document.getElementById('saleEdit_cost').value)  || 0;
+  const disc  = parseFloat(document.getElementById('saleEdit_disc').value)  || 0;
+  const total  = price * qty - disc;
+  const profit = total - cost * qty;
+  document.getElementById('saleEdit_total').value  = fmt(total);
+  document.getElementById('saleEdit_profit').value = fmt(profit);
+  document.getElementById('saleEdit_profit').style.color = profit >= 0 ? 'var(--glaze-green)' : '#c04444';
+}
+
+function saveSaleEdit() {
+  const stream = document.getElementById('saleEdit_stream').value;
+  const id     = Number(document.getElementById('saleEdit_id').value);
+  const sale   = SALES[stream].find(s => Number(s.id) === id);
+  if (!sale) return;
+  const price    = parseFloat(document.getElementById('saleEdit_price').value) || 0;
+  const qty      = parseInt(document.getElementById('saleEdit_qty').value)     || 1;
+  const unitCost = parseFloat(document.getElementById('saleEdit_cost').value)  || 0;
+  const disc     = parseFloat(document.getElementById('saleEdit_disc').value)  || 0;
+  const total    = price * qty - disc;
+  const cost     = unitCost * qty;
+  const profit   = total - cost;
+  const catVal   = document.getElementById('saleEdit_cat').value;
+  // Update appropriate name field based on stream
+  if (stream === 'instore' || stream === 'pottery') {
+    sale.productName = catVal;
+  } else {
+    sale.cat = catVal;
+  }
+  sale.date   = document.getElementById('saleEdit_date').value;
+  sale.desc   = document.getElementById('saleEdit_desc').value;
+  sale.price  = price;
+  sale.qty    = qty;
+  sale.unitCost = unitCost;
+  sale.disc   = disc;
+  sale.total  = total;
+  sale.cost   = cost;
+  sale.profit = profit;
+  sale.notes  = document.getElementById('saleEdit_notes').value;
+  save(KEYS.sales, SALES);
+  closeSaleEdit();
+  renderSalesLog(stream);
+  showAlert('Sale updated.');
+}
+
 // ══════════════════════════════════════════
 //  GOOGLE AUTH
 // ══════════════════════════════════════════
@@ -2644,7 +2925,7 @@ function hideLoadingOverlay() {
 
 function bootApp() {
   // Re-init state from cache (Sheets data now in _cache)
-  COSTS = load('klay_costs') || { clay:0, clayWhite:0, clayTerra:0, plaster:0, labour:0, bisque:0, glazeFire:0, glazeG:0 };
+  COSTS = load('klay_costs') || { clay:0, clayWhite:0, clayTerra:0, plaster:0, bisque:0, glazeFire:0, glazeG:0 };
   if (!COSTS.clayWhite && COSTS.clay) COSTS.clayWhite = COSTS.clay;
   if (!COSTS.clayTerra) COSTS.clayTerra = 0;
 
@@ -2663,8 +2944,7 @@ function bootApp() {
   renderAllSalesLogs();
   renderCatalogue('shop');
   renderCatalogue('pp');
-  populateExpenseMonthFilter();
-  renderExpenses();
+  ['overhead','variable','capital'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); });
   renderStock();
   calcQuote();
   updateFloatTypeStyle();
