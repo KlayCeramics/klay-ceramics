@@ -436,6 +436,7 @@
 <div class="reconnect-bar" id="reconnectBar">
   <span class="rb-msg">☁️ Sign in to sync with Google Sheets</span>
   <button class="btn btn-secondary btn-sm" onclick="reconnectGoogle()" id="signinBtn">Sign In</button>
+  <button class="btn btn-ghost btn-sm" id="uploadLocalBtn" style="display:none;" onclick="pushAllToSheets()">⬆ Upload Local Data</button>
   <button class="btn btn-ghost btn-sm" onclick="document.getElementById('reconnectBar').style.display='none'">Use offline</button>
 </div>
 
@@ -1257,12 +1258,12 @@ const KEYS = {
 // ══════════════════════════════════════════
 let SHEET_ID = localStorage.getItem('klay_sheet_id') || '';
 let API_KEY   = localStorage.getItem('klay_api_key')  || '';
-let OAUTH_TOKEN = null;  // set after Google sign-in
-let _cache = {};         // in-memory cache so UI stays fast
-let _dirty = {};         // tracks which keys need syncing
+let OAUTH_TOKEN = null;
+let _cache = {};
+let _dirty = {};
 let _syncTimer = null;
+let _syncErrors = 0;
 
-// Tab name mapping: localStorage key → Sheet tab name
 const TAB_MAP = {
   klay_costs:    'Costs',
   klay_products: 'Products',
@@ -1272,21 +1273,66 @@ const TAB_MAP = {
   klay_float:    'Float',
 };
 
+function setSyncStatus(state, msg) {
+  const ind = document.getElementById('syncIndicator');
+  if (!ind) return;
+  ind.style.display = 'inline-block';
+  if (state === 'ok')      { ind.className = 'sync-indicator';         ind.textContent = '✓ ' + (msg || 'Synced'); }
+  if (state === 'syncing') { ind.className = 'sync-indicator syncing'; ind.textContent = '⏳ ' + (msg || 'Saving…'); }
+  if (state === 'error')   { ind.className = 'sync-indicator error';   ind.textContent = '✕ ' + (msg || 'Sync error'); }
+  if (state === 'ok') setTimeout(() => { if (ind.className === 'sync-indicator') ind.style.display = 'none'; }, 4000);
+}
+
 function load(key) {
-  // Return from cache (populated on app init from Sheets)
   if (_cache[key] !== undefined) return _cache[key];
-  // Fallback to localStorage while loading
   try { return JSON.parse(localStorage.getItem(key)) || null; } catch { return null; }
 }
 
 function save(key, data) {
   _cache[key] = data;
-  // Also write to localStorage as backup
   try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
-  // Debounce writes to Sheets (batch writes every 2 seconds)
   _dirty[key] = true;
   if (_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(flushToSheets, 2000);
+  _syncTimer = setTimeout(flushToSheets, 1500);
+}
+
+async function sheetsRequest(url, options = {}) {
+  // Always use OAuth token for auth — never mix with API key in auth header
+  const headers = {
+    'Authorization': `Bearer ${OAUTH_TOKEN}`,
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  const resp = await fetch(url, { ...options, headers });
+  if (resp.status === 401) {
+    // Token expired — clear it so reconnect bar shows
+    OAUTH_TOKEN = null;
+    setSyncStatus('error', 'Signed out — click Sign In');
+    document.getElementById('reconnectBar').style.display = 'flex';
+    throw new Error('Token expired');
+  }
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`HTTP ${resp.status}: ${errText}`);
+  }
+  return resp;
+}
+
+async function writeSheetTab(key, data) {
+  const tab = TAB_MAP[key];
+  if (!tab || !SHEET_ID || !OAUTH_TOKEN) return false;
+  const json = JSON.stringify(data);
+  const range = encodeURIComponent(`${tab}!A1`);
+  try {
+    await sheetsRequest(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=RAW`,
+      { method: 'PUT', body: JSON.stringify({ values: [[json]] }) }
+    );
+    return true;
+  } catch(e) {
+    console.error('Sheet write error for', key, ':', e.message);
+    return false;
+  }
 }
 
 async function flushToSheets() {
@@ -1294,50 +1340,38 @@ async function flushToSheets() {
   const keys = Object.keys(_dirty);
   if (!keys.length) return;
   _dirty = {};
+  setSyncStatus('syncing', 'Saving…');
+  let allOk = true;
   for (const key of keys) {
-    await writeSheetTab(key, _cache[key]);
+    const ok = await writeSheetTab(key, _cache[key]);
+    if (!ok) allOk = false;
   }
-}
-
-async function writeSheetTab(key, data) {
-  const tab = TAB_MAP[key];
-  if (!tab || !SHEET_ID || !OAUTH_TOKEN) return;
-  const json = JSON.stringify(data);
-  // Store as single cell A1 in each named sheet tab
-  const range = encodeURIComponent(`${tab}!A1`);
-  try {
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=RAW`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${OAUTH_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ values: [[json]] }),
-      }
-    );
-  } catch(e) {
-    console.error('Sheet write error:', key, e);
+  if (allOk) {
+    _syncErrors = 0;
+    setSyncStatus('ok', 'Synced');
+  } else {
+    _syncErrors++;
+    setSyncStatus('error', 'Save failed — check connection');
+    if (_syncErrors < 3) {
+      // Retry once after 5 seconds
+      keys.forEach(k => _dirty[k] = true);
+      setTimeout(flushToSheets, 5000);
+    }
   }
 }
 
 async function readAllFromSheets() {
   if (!SHEET_ID || !OAUTH_TOKEN) return false;
+  setSyncStatus('syncing', 'Loading…');
   try {
-    const tabs = Object.values(TAB_MAP).join(',');
-    // Read all tabs in one batch request
-    const ranges = Object.values(TAB_MAP).map(t => encodeURIComponent(`${t}!A1`)).join('&ranges=');
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?ranges=${ranges}&key=${API_KEY}`;
-    const resp = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${OAUTH_TOKEN}` }
-    });
-    if (!resp.ok) {
-      console.error('Sheet read failed:', await resp.text());
-      return false;
-    }
+    const ranges = Object.values(TAB_MAP).map(t => `ranges=${encodeURIComponent(t + '!A1')}`).join('&');
+    // Use only OAuth for auth — do NOT append API key here
+    const resp = await sheetsRequest(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?${ranges}`
+    );
     const data = await resp.json();
     const keys = Object.keys(TAB_MAP);
+    let loaded = 0;
     (data.valueRanges || []).forEach((vr, i) => {
       const key = keys[i];
       const cellVal = vr.values?.[0]?.[0];
@@ -1345,47 +1379,62 @@ async function readAllFromSheets() {
         try {
           const parsed = JSON.parse(cellVal);
           _cache[key] = parsed;
-          localStorage.setItem(key, cellVal); // backup
-        } catch(e) { console.warn('Parse error for', key); }
+          localStorage.setItem(key, cellVal);
+          loaded++;
+        } catch(e) { console.warn('Parse error for', key, e); }
       }
     });
+    setSyncStatus('ok', `Loaded (${loaded} data sets)`);
     return true;
   } catch(e) {
-    console.error('readAllFromSheets error:', e);
+    console.error('readAllFromSheets error:', e.message);
+    setSyncStatus('error', 'Load failed: ' + e.message.slice(0, 40));
     return false;
+  }
+}
+
+async function pushAllToSheets() {
+  // Force-write ALL local data up to Sheets (used after import or first connect)
+  if (!SHEET_ID || !OAUTH_TOKEN) { showAlert('Not connected to Google Sheets.', 'error'); return; }
+  setSyncStatus('syncing', 'Uploading all data…');
+  showLoadingOverlay('Uploading all data to Google Sheets…');
+  await ensureSheetTabs();
+  let allOk = true;
+  for (const key of Object.keys(TAB_MAP)) {
+    const data = load(key);
+    if (data !== null) {
+      const ok = await writeSheetTab(key, data);
+      if (!ok) allOk = false;
+    }
+  }
+  hideLoadingOverlay();
+  if (allOk) {
+    setSyncStatus('ok', 'All data uploaded ✓');
+    showAlert('✓ All data successfully uploaded to Google Sheets!');
+  } else {
+    setSyncStatus('error', 'Some writes failed');
+    showAlert('Some data failed to upload. Check your Sheet ID and try again.', 'error');
   }
 }
 
 async function ensureSheetTabs() {
   if (!SHEET_ID || !OAUTH_TOKEN) return;
   try {
-    // Get existing sheets
-    const resp = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties.title`,
-      { headers: { 'Authorization': `Bearer ${OAUTH_TOKEN}` } }
+    const resp = await sheetsRequest(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?fields=sheets.properties.title`
     );
     const data = await resp.json();
     const existing = (data.sheets || []).map(s => s.properties.title);
     const needed = Object.values(TAB_MAP).filter(t => !existing.includes(t));
     if (!needed.length) return;
-    // Create missing tabs
-    await fetch(
+    await sheetsRequest(
       `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OAUTH_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requests: needed.map(title => ({
-            addSheet: { properties: { title } }
-          }))
-        })
-      }
+      { method: 'POST', body: JSON.stringify({
+        requests: needed.map(title => ({ addSheet: { properties: { title } } }))
+      })}
     );
   } catch(e) {
-    console.error('ensureSheetTabs error:', e);
+    console.error('ensureSheetTabs error:', e.message);
   }
 }
 
@@ -2955,14 +3004,23 @@ function initGoogleAuth() {
       document.getElementById('signinBtn')?.setAttribute('disabled', true);
       showLoadingOverlay('Connecting to Google Sheets…');
       await ensureSheetTabs();
+      await ensureSheetTabs();
       const ok = await readAllFromSheets();
       hideLoadingOverlay();
-      if (ok) {
+      // Check if Sheets has any data — if not, offer to upload local data
+      const hasSheetData = Object.keys(TAB_MAP).some(k => _cache[k] !== undefined);
+      const hasLocalData = Object.keys(TAB_MAP).some(k => localStorage.getItem(k));
+      if (ok && !hasSheetData && hasLocalData) {
+        document.getElementById('reconnectBar').style.display = 'flex';
+        document.getElementById('uploadLocalBtn').style.display = 'inline-flex';
+        showAlert('Connected! Your Sheet is empty — click "Upload Local Data" to sync your existing data up.', 'error');
+      } else if (ok) {
         showAlert('Connected! Data loaded from Google Sheets.');
+        bootApp();
       } else {
-        showAlert('Connected, but could not read data. Check Sheet ID.', 'error');
+        showAlert('Connected, but could not read Sheet. Check your Sheet ID.', 'error');
+        bootApp();
       }
-      bootApp();
     },
   });
 }
@@ -2990,10 +3048,22 @@ function requestGoogleToken() {
       document.getElementById('setupOverlay').style.display = 'none';
       showLoadingOverlay('Setting up your Google Sheet…');
       await ensureSheetTabs();
+      await ensureSheetTabs();
       const ok = await readAllFromSheets();
       hideLoadingOverlay();
-      showAlert(ok ? '✓ Connected! Your data is now cloud-synced.' : 'Connected but check your Sheet ID.', ok ? 'success' : 'error');
-      bootApp();
+      const hasSheetData = Object.keys(TAB_MAP).some(k => _cache[k] !== undefined);
+      const hasLocalData = Object.keys(TAB_MAP).some(k => localStorage.getItem(k));
+      if (ok && !hasSheetData && hasLocalData) {
+        document.getElementById('reconnectBar').style.display = 'flex';
+        document.getElementById('uploadLocalBtn').style.display = 'inline-flex';
+        showAlert('Connected! Your Sheet is empty — click "Upload Local Data" to push your data up.', 'error');
+      } else if (ok) {
+        showAlert('✓ Connected! Your data is now cloud-synced.');
+        bootApp();
+      } else {
+        showAlert('Connected but could not read Sheet — check your Sheet ID.', 'error');
+        bootApp();
+      }
     },
   });
   tokenClient.requestAccessToken();
@@ -3092,11 +3162,18 @@ function reconnectGoogle() {
       await ensureSheetTabs();
       const ok = await readAllFromSheets();
       hideLoadingOverlay();
-      if (ok) {
+      const hasSheetData = Object.keys(TAB_MAP).some(k => _cache[k] !== undefined);
+      const hasLocalData = Object.keys(TAB_MAP).some(k => localStorage.getItem(k));
+      if (ok && !hasSheetData && hasLocalData) {
+        document.getElementById('reconnectBar').style.display = 'flex';
+        document.getElementById('uploadLocalBtn').style.display = 'inline-flex';
+        showAlert('Signed in! Sheet is empty — click "Upload Local Data" to sync your data up.', 'error');
+      } else if (ok) {
         showAlert('✓ Connected and data loaded!');
         bootApp();
       } else {
         showAlert('Signed in but could not read Sheet. Check your Sheet ID.', 'error');
+        bootApp();
       }
     },
   });
@@ -3107,14 +3184,7 @@ function openSetup() {
   document.getElementById('setupOverlay').style.display = 'flex';
 }
 
-// Override flushToSheets to show sync indicator
-const _origFlush = flushToSheets;
-async function flushToSheets() {
-  const ind = document.getElementById('syncIndicator');
-  if (ind) { ind.style.display='inline-block'; ind.className='sync-indicator syncing'; ind.textContent='⏳ Saving…'; }
-  await _origFlush();
-  if (ind) { ind.className='sync-indicator'; ind.textContent='✓ Synced'; setTimeout(()=>{ ind.style.display='none'; }, 3000); }
-}
+// Sync indicator now handled inside flushToSheets directly
 
 </script>
 </body>
