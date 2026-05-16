@@ -474,18 +474,14 @@
 
   <div class="stats-grid" id="dashStats"></div>
 
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.5rem;margin-bottom:1.5rem;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
     <div class="card" style="margin-bottom:0;">
       <div class="card-title">Revenue by Stream</div>
       <div id="dashStreams"></div>
     </div>
-    <div class="card" style="margin-bottom:0;border-left:3px solid var(--clay);">
-      <div class="card-title">🏠 Overhead Expenses</div>
-      <div id="dashOverhead"></div>
-    </div>
-    <div class="card" style="margin-bottom:0;border-left:3px solid var(--glaze-blue);">
-      <div class="card-title">📦 Variable Expenses</div>
-      <div id="dashVariable"></div>
+    <div class="card" style="margin-bottom:0;">
+      <div class="card-title">Expenses Summary</div>
+      <div id="dashExpensesSummary"></div>
     </div>
   </div>
 
@@ -2416,7 +2412,8 @@ function renderDashboard() {
     <div class="stat-card highlight"><div class="stat-label">Total Revenue</div><div class="stat-value">${fmt(d.totalRevenue)}</div></div>
     <div class="stat-card"><div class="stat-label">Cost of Goods Sold</div><div class="stat-value">${fmt(d.totalCOGS)}</div></div>
     <div class="stat-card green"><div class="stat-label">Gross Profit</div><div class="stat-value">${fmt(d.grossProfit)}</div></div>
-    <div class="stat-card red"><div class="stat-label">Operating Expenses</div><div class="stat-value">${fmt(d.operatingExp)}</div><div class="stat-sub">Overhead + Variable</div></div>
+    <div class="stat-card red"><div class="stat-label">Overhead Expenses</div><div class="stat-value">${fmt(d.overheadExp)}</div></div>
+    <div class="stat-card red"><div class="stat-label">Variable Expenses</div><div class="stat-value">${fmt(d.variableExp)}</div></div>
     <div class="stat-card ${d.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value">${fmt(d.netProfit)}</div><div class="stat-sub">${d.netProfit>=0?'✓ Profitable':'↓ Loss this month'}</div></div>
   `;
 
@@ -2433,23 +2430,16 @@ function renderDashboard() {
     </div>
   `;
 
-  // Overhead expenses card
-  const ohEl = document.getElementById('dashOverhead');
-  if (ohEl) ohEl.innerHTML = `
+  // Expenses summary card (overhead + variable split, combined total)
+  const expSumEl = document.getElementById('dashExpensesSummary');
+  if (expSumEl) expSumEl.innerHTML = `
     <div class="cost-breakdown">
-      <div class="cost-row total"><span>Total Overhead</span><span>${fmt(d.overheadExp)}</span></div>
-    </div>
-  `;
-
-  // Variable expenses card
-  const vaEl = document.getElementById('dashVariable');
-  if (vaEl) vaEl.innerHTML = `
-    <div class="cost-breakdown">
-      <div class="cost-row total"><span>Total Variable</span><span>${fmt(d.variableExp)}</span></div>
-      <div style="height:1px;background:var(--sand-dark);margin:0.6rem 0;"></div>
-      <div class="cost-row" style="font-size:0.8rem;color:var(--ash);"><span>Combined Operating</span><span>${fmt(d.operatingExp)}</span></div>
-      <div class="cost-row" style="font-size:0.8rem;color:var(--ash);"><span>Gross Profit</span><span>${fmt(d.grossProfit)}</span></div>
-      <div class="cost-row" style="font-weight:600;margin-top:0.3rem;color:${d.netProfit>=0?'var(--glaze-green)':'#e05c5c'};"><span>Net Profit</span><span>${fmt(d.netProfit)}</span></div>
+      <div class="cost-row"><span>🏠 Overhead</span><span>${fmt(d.overheadExp)}</span></div>
+      <div class="cost-row"><span>📦 Variable</span><span>${fmt(d.variableExp)}</span></div>
+      <div class="cost-row total"><span>Total Operating</span><span>${fmt(d.operatingExp)}</span></div>
+      <div style="height:1px;background:var(--sand-dark);margin:0.5rem 0;"></div>
+      <div class="cost-row" style="font-size:0.85rem;color:var(--ash);"><span>Gross Profit</span><span>${fmt(d.grossProfit)}</span></div>
+      <div class="cost-row" style="font-weight:600;color:${d.netProfit>=0?'var(--glaze-green)':'#e05c5c'};"><span>Net Profit</span><span>${fmt(d.netProfit)}</span></div>
     </div>
   `;
 
@@ -2470,7 +2460,8 @@ function renderDashboard() {
         <div class="stat-card highlight"><div class="stat-label">Total Revenue</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalRevenue)}</div></div>
         <div class="stat-card"><div class="stat-label">Total COGS</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.totalCOGS)}</div></div>
         <div class="stat-card green"><div class="stat-label">Gross Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.grossProfit)}</div></div>
-        <div class="stat-card red"><div class="stat-label">Operating Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.operatingExp)}</div><div class="stat-sub">Overhead + Variable</div></div>
+        <div class="stat-card red"><div class="stat-label">Overhead Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.overheadExp)}</div></div>
+        <div class="stat-card red"><div class="stat-label">Variable Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.variableExp)}</div></div>
         <div class="stat-card ${at.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.netProfit)}</div><div class="stat-sub">${at.netProfit>=0?'✓ Overall profitable':'↓ Overall loss'}</div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;flex-wrap:wrap;">
