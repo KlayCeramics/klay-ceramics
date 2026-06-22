@@ -567,6 +567,7 @@
         <div class="form-group"><label>Bisque Kiln Capacity (items)</label><input type="number" id="sp_bisque_cap" step="1" placeholder="e.g. 30" oninput="calcShopPreview()"></div>
         <div class="form-group"><label>Glaze Kiln Capacity (items)</label><input type="number" id="sp_glaze_cap" step="1" placeholder="e.g. 20" oninput="calcShopPreview()"></div>
         <div class="form-group"><label>Markup %</label><input type="number" id="sp_markup" step="1" value="100" oninput="calcShopPreview()"></div>
+        <div class="form-group"><label>Other Expenses (USD)</label><input type="number" id="sp_other" step="0.01" value="0" placeholder="e.g. decals, transfers" oninput="calcShopPreview()"><span class="inline-calc">Any additional per-piece costs not listed above</span></div>
         <div class="form-group"><label>Initial Stock Qty</label><input type="number" id="sp_qty" step="1" value="0"></div>
       </div>
       <div id="shopPreview" class="cost-breakdown" style="margin-bottom:1rem;display:none;"></div>
@@ -594,6 +595,7 @@
         <div class="form-group"><label>Bisque Kiln Capacity (items)</label><input type="number" id="pp_bisque_cap" step="1" placeholder="e.g. 40" oninput="calcPPPreview()"></div>
         <div class="form-group"><label>Glaze Kiln Capacity (items)</label><input type="number" id="pp_glaze_cap" step="1" placeholder="e.g. 25" oninput="calcPPPreview()"></div>
         <div class="form-group"><label>Markup %</label><input type="number" id="pp_markup" step="1" value="100" oninput="calcPPPreview()"></div>
+        <div class="form-group"><label>Other Expenses (USD)</label><input type="number" id="pp_other" step="0.01" value="0" placeholder="e.g. decals, transfers" oninput="calcPPPreview()"><span class="inline-calc">Any additional per-piece costs not listed above</span></div>
         <div class="form-group"><label>Initial Stock Qty</label><input type="number" id="pp_qty" step="1" value="0"></div>
       </div>
       <div id="ppPreview" class="cost-breakdown" style="margin-bottom:1rem;display:none;"></div>
@@ -804,6 +806,7 @@
     <button class="tab-btn active" onclick="switchExpenseTab('overhead')">🏠 Overhead</button>
     <button class="tab-btn" onclick="switchExpenseTab('variable')">📦 Variable</button>
     <button class="tab-btn" onclick="switchExpenseTab('capital')">🔧 Capital Reinvestment</button>
+    <button class="tab-btn" onclick="switchExpenseTab('cog')">📋 COG (Record Only)</button>
   </div>
 
   <!-- OVERHEAD TAB -->
@@ -937,6 +940,52 @@
       <div id="expenseLog-capital"></div>
     </div>
   </div>
+
+  <!-- COG RECORD TAB -->
+  <div class="tab-pane" id="etab-cog">
+    <div style="background:var(--sand);border-radius:8px;padding:0.8rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--ash);border-left:3px solid var(--bisque);">
+      <strong style="color:var(--clay-dark);">COG — Record Only</strong> — Expenses already accounted for in your Cost of Goods (e.g. clay, glaze materials, plaster, fuel). These are logged here for reference and reconciliation only. <strong>They do not affect profit, expenses totals, or any calculations.</strong>
+    </div>
+    <div class="card">
+      <div class="card-title">Add COG Record</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date</label><input type="date" id="exp_cg_date"></div>
+        <div class="form-group"><label>Category</label>
+          <select id="exp_cg_cat">
+            <option>Clay (White)</option><option>Clay (Terracotta)</option>
+            <option>Glaze Materials</option><option>Plaster of Paris</option>
+            <option>Kiln Fuel / Firing</option><option>Packaging Materials</option>
+            <option>Other COG Material</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Description</label><input type="text" id="exp_cg_desc"></div>
+        <div class="form-group"><label>Amount (USD)</label><input type="number" id="exp_cg_amount" step="0.01"></div>
+      </div>
+      <div class="form-group" style="margin-top:0.75rem;">
+        <label>Invoice / Receipt (optional)</label>
+        <div class="invoice-upload-area" id="invoiceDropArea-cg" onclick="document.getElementById('exp_cg_invoice').click()" ondragover="event.preventDefault();this.style.borderColor='var(--clay)'" ondragleave="this.style.borderColor=''" ondrop="handleInvoiceDropFor(event,'cg')">
+          <div id="invoicePreviewArea-cg">
+            <div style="font-size:1.8rem;margin-bottom:0.3rem;">📎</div>
+            <div>Click to attach invoice or receipt</div>
+            <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>
+          </div>
+        </div>
+        <input type="file" id="exp_cg_invoice" accept="image/*,application/pdf" style="display:none" onchange="handleInvoiceSelectFor(this,'cg')">
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="addExpense('cog')">Add Record</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">COG Records Log</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+          <select id="expMonthFilter-cg" onchange="renderExpenses('cog')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportExpensesExcel('cog')">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="expenseLog-cog"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══════════════ STOCK LOG ══════════════ -->
@@ -1107,6 +1156,7 @@
       <div class="form-group"><label>Bisque Kiln Capacity (items)</label><input type="number" id="edit_bisque_cap" step="1" oninput="calcEditPreview()"></div>
       <div class="form-group"><label>Glaze Kiln Capacity (items)</label><input type="number" id="edit_glaze_cap" step="1" oninput="calcEditPreview()"></div>
       <div class="form-group"><label>Markup %</label><input type="number" id="edit_markup" step="1" oninput="calcEditPreview()"></div>
+      <div class="form-group"><label>Other Expenses (USD)</label><input type="number" id="edit_other" step="0.01" value="0" oninput="calcEditPreview()"><span class="inline-calc">Additional per-piece costs</span></div>
       <div class="form-group"><label>Stock Qty</label><input type="number" id="edit_qty" step="1"></div>
     </div>
     <div id="editPreview" class="cost-breakdown" style="margin: 1rem 0;"></div>
@@ -1196,6 +1246,7 @@
           <option value="overhead">🏠 Overhead</option>
           <option value="variable">📦 Variable</option>
           <option value="capital">🔧 Capital Reinvestment</option>
+          <option value="cog">📋 COG (Record Only)</option>
         </select>
       </div>
       <div class="form-group"><label>Category</label><input type="text" id="expEdit_cat"></div>
@@ -1487,7 +1538,8 @@ function calcProductCost(p) {
   const bisqueCost = p.bisqueCap ? (c.bisque    || 0) / p.bisqueCap : 0;
   const glazeCost  = (p.glaze   || 0) * (c.glazeG  || 0);
   const glazeFireCost = p.glazeCap  ? (c.glazeFire || 0) / p.glazeCap  : 0;
-  const total = clayCost + plasterCost + labourCost + bisqueCost + glazeCost + glazeFireCost;
+  const otherCost  = (p.other   || 0);
+  const total = clayCost + plasterCost + labourCost + bisqueCost + glazeCost + glazeFireCost + otherCost;
   const markup = p.markup || 100;
   const sellingPrice = total * (1 + markup / 100);
   const clayTypeLabel = (p.clayType === 'terra') ? 'Terracotta' : 'White Clay';
@@ -1517,7 +1569,7 @@ function showPage(id) {
   if (id === 'sales') { populateSalesDropdowns(); renderAllSalesLogs(); }
   if (id === 'costs') renderCostsSummary();
   if (id === 'products') { renderCatalogue('shop'); renderCatalogue('pp'); }
-  if (id === 'expenses') { ['overhead','variable','capital'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); }); }
+  if (id === 'expenses') { ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); }); }
   if (id === 'quote') calcQuote();
   if (id === 'float') renderFloat();
 }
@@ -1604,6 +1656,7 @@ function buildPreviewHTML(p) {
     <div class="cost-row"><span>Bisque fire (${fmt(COSTS.bisque)} ÷ ${p.bisqueCap||'?'} items)</span><span>${fmt(c.bisqueCost)}</span></div>
     <div class="cost-row"><span>Glaze cost (${p.glaze||0}g × ${fmt(COSTS.glazeG)}/g)</span><span>${fmt(c.glazeCost)}</span></div>
     <div class="cost-row"><span>Glaze fire (${fmt(COSTS.glazeFire)} ÷ ${p.glazeCap||'?'} items)</span><span>${fmt(c.glazeFireCost)}</span></div>
+    ${(p.other||0)>0 ? `<div class="cost-row"><span>Other Expenses</span><span>${fmt(p.other||0)}</span></div>` : ''}
     <div class="cost-row total"><span>Total Cost</span><span>${fmt(c.total)}</span></div>
     <div class="cost-row price"><span>Selling Price (${p.markup||100}% markup)</span><span>${fmt(c.sellingPrice)}</span></div>
   `;
@@ -1614,6 +1667,7 @@ function calcShopPreview() {
     clay:p(      'sp_clay'),plaster:p('sp_plaster'),
     glaze:p(     'sp_glaze'),bisqueCap:p('sp_bisque_cap'),
     glazeCap:p(  'sp_glaze_cap'),markup:p('sp_markup'),
+    other:p(     'sp_other'),
     clayType: document.getElementById('sp_clay_type').value
   };
   const el = document.getElementById('shopPreview');
@@ -1626,6 +1680,7 @@ function calcPPPreview() {
     clay:p('pp_clay'),plaster:p('pp_plaster'),
     glaze:p('pp_glaze'),bisqueCap:p('pp_bisque_cap'),
     glazeCap:p('pp_glaze_cap'),markup:p('pp_markup'),
+    other:p(   'pp_other'),
     clayType: document.getElementById('pp_clay_type').value
   };
   const el = document.getElementById('ppPreview');
@@ -1654,6 +1709,7 @@ function addProduct(type) {
     markup:    p(prefix+'markup') || 100,
     qty:       p(prefix+'qty'),
     clayType:  document.getElementById(prefix+'clay_type')?.value || 'white',
+    other:     p(prefix+'other'),
   };
 
   PRODUCTS[type].push(prod);
@@ -1667,6 +1723,7 @@ function addProduct(type) {
     document.getElementById(prefix+f).value = '';
   });
   document.getElementById(prefix+'markup').value = 100;
+  document.getElementById(prefix+'other').value  = 0;
   document.getElementById(prefix+'qty').value = 0;
   document.getElementById(type==='shop'?'shopPreview':'ppPreview').style.display='none';
   showAlert(`"${name}" added to catalogue.`);
@@ -1699,6 +1756,7 @@ function openEditModal(type, id) {
   document.getElementById('edit_bisque_cap').value = prod.bisqueCap || '';
   document.getElementById('edit_glaze_cap').value = prod.glazeCap || '';
   document.getElementById('edit_markup').value = prod.markup || 100;
+  document.getElementById('edit_other').value  = prod.other  || 0;
   document.getElementById('edit_qty').value = prod.qty || 0;
   calcEditPreview();
 }
@@ -1713,6 +1771,7 @@ function calcEditPreview() {
   const tempProd = {
     clay: ep('edit_clay'), plaster: ep('edit_plaster'), glaze: ep('edit_glaze'),
     bisqueCap: ep('edit_bisque_cap'), glazeCap: ep('edit_glaze_cap'), markup: ep('edit_markup'),
+    other: ep('edit_other'),
     clayType: document.getElementById('edit_clay_type')?.value || 'white'
   };
   document.getElementById('editPreview').innerHTML = buildPreviewHTML(tempProd);
@@ -1732,6 +1791,7 @@ function saveEditProduct() {
   prod.bisqueCap = ep('edit_bisque_cap');
   prod.glazeCap  = ep('edit_glaze_cap');
   prod.markup    = ep('edit_markup') || 100;
+  prod.other     = ep('edit_other');
   prod.qty       = ep('edit_qty');
   prod.clayType  = document.getElementById('edit_clay_type')?.value || 'white';
   save(KEYS.products, PRODUCTS);
@@ -2121,7 +2181,7 @@ function clearInvoice(event) {
     <div style="font-size:0.72rem;margin-top:0.2rem;opacity:0.7;">JPG, PNG, PDF supported</div>`;
 }
 
-const SECTION_CODES = { overhead:'oh', variable:'va', capital:'ca' };
+const SECTION_CODES = { overhead:'oh', variable:'va', capital:'ca', cog:'cg' };
 
 function addExpense(section) {
   section = section || 'overhead';
@@ -2210,7 +2270,7 @@ function saveExpenseEdit() {
     document.querySelectorAll('[id^="etab-"]').forEach(t => t.classList.remove('active'));
     document.getElementById('etab-' + newSection).classList.add('active');
     document.querySelectorAll('#page-expenses .tab-btn').forEach(b => b.classList.remove('active'));
-    const tabLabels = { overhead:'🏠 Overhead', variable:'📦 Variable', capital:'🔧 Capital Reinvestment' };
+    const tabLabels = { overhead:'🏠 Overhead', variable:'📦 Variable', capital:'🔧 Capital Reinvestment', cog:'📋 COG (Record Only)' };
     document.querySelectorAll('#page-expenses .tab-btn').forEach(b => {
       if (b.textContent.trim() === tabLabels[newSection]) b.classList.add('active');
     });
@@ -2240,6 +2300,11 @@ function renderExpenses(section) {
   const month = sel ? sel.value : 'all';
   const el = document.getElementById(`expenseLog-${section}`);
   if (!el) return;
+  // COG section: show record-only banner above log
+  if (section === 'cog') {
+    let banner = el.previousElementSibling;
+    if (banner && banner.className === 'cog-record-banner') banner.remove();
+  }
   // Filter by section (old entries without section field fall into overhead)
   let data = EXPENSES.filter(e => {
     const esec = e.section || 'overhead';
@@ -2268,7 +2333,7 @@ function renderExpenses(section) {
           </td>
         </tr>`).join('')}
         <tr style="background:var(--sand);font-weight:600;">
-          <td colspan="3">Total</td><td class="num">${fmt(total)}</td><td colspan="2"></td>
+          <td colspan="3">${section === 'cog' ? 'Total Recorded (not in calculations)' : 'Total'}</td><td class="num">${fmt(total)}</td><td colspan="2"></td>
         </tr>
       </tbody>
     </table></div>
@@ -3108,7 +3173,7 @@ function bootApp() {
   renderAllSalesLogs();
   renderCatalogue('shop');
   renderCatalogue('pp');
-  ['overhead','variable','capital'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); });
+  ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); });
   renderStock();
   calcQuote();
   updateFloatTypeStyle();
