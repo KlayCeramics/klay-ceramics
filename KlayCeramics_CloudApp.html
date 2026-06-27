@@ -623,6 +623,7 @@
     <button class="tab-btn" onclick="switchSalesTab('wholesale')">📦 Wholesale</button>
     <button class="tab-btn" onclick="switchSalesTab('custom')">✏️ Custom</button>
     <button class="tab-btn" onclick="switchSalesTab('classes')">🎓 Classes</button>
+    <button class="tab-btn" onclick="switchSalesTab('vouchers')">🎁 Gift Vouchers</button>
   </div>
 
   <div class="tab-pane active" id="stab-instore">
@@ -637,6 +638,7 @@
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="is_disc" step="0.01" value="0" oninput="calcSaleTotal('is')"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="is_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="is_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="is_voucher" onchange="applyVoucherDiscount('is')"><option value="">— None —</option></select></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('instore')">Record Sale</button></div>
     </div>
@@ -664,6 +666,7 @@
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="pp_disc" step="0.01" value="0" oninput="calcSaleTotal('pp')"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="pp_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="pp_voucher" onchange="applyVoucherDiscount('pp')"><option value="">— None —</option></select></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('pottery')">Record Sale</button></div>
     </div>
@@ -693,6 +696,7 @@
         <div class="form-group"><label>Total (auto)</label><input type="text" id="ws_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="ws_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="ws_notes"></div>
+        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="ws_voucher" onchange="applyVoucherDiscount('ws')"><option value="">— None —</option></select></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('workshop')">Record Sale</button></div>
     </div>
@@ -723,6 +727,7 @@
         <div class="form-group"><label>Total (auto)</label><input type="text" id="wh_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="wh_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="wh_notes"></div>
+        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="wh_voucher" onchange="applyVoucherDiscount('wh')"><option value="">— None —</option></select></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('wholesale')">Record Sale</button></div>
     </div>
@@ -752,6 +757,7 @@
         <div class="form-group"><label>Total (auto)</label><input type="text" id="cu_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="cu_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cu_notes"></div>
+        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="cu_voucher" onchange="applyVoucherDiscount('cu')"><option value="">— None —</option></select></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('custom')">Record Sale</button></div>
     </div>
@@ -781,6 +787,7 @@
         <div class="form-group"><label>Total (auto)</label><input type="text" id="cl_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="cl_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cl_notes"></div>
+        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="cl_voucher" onchange="applyVoucherDiscount('cl')"><option value="">— None —</option></select></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('classes')">Record Sale</button></div>
     </div>
@@ -795,6 +802,36 @@
       <div id="slog-classes"></div>
     </div>
   </div>
+  <div class="tab-pane" id="stab-vouchers">
+    <div class="card">
+      <div class="card-title">Issue a Gift Voucher</div>
+      <div class="form-grid wide">
+        <div class="form-group"><label>Date Issued</label><input type="date" id="gv_date"></div>
+        <div class="form-group">
+          <label>Voucher Code</label>
+          <div style="display:flex;gap:0.4rem;">
+            <input type="text" id="gv_code" placeholder="e.g. KLAY-2024-001" style="flex:1;text-transform:uppercase;">
+            <button class="btn btn-ghost btn-sm" onclick="generateVoucherCode()" style="white-space:nowrap;">Auto Generate</button>
+          </div>
+        </div>
+        <div class="form-group"><label>Value (USD)</label><input type="number" id="gv_amount" step="0.01" min="0.01" placeholder="0.00"></div>
+        <div class="form-group"><label>Customer Name (optional)</label><input type="text" id="gv_customer" placeholder="e.g. Jane Smith"></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="gv_notes" placeholder="e.g. Birthday gift"></div>
+      </div>
+      <div class="flex-end"><button class="btn btn-primary" onclick="issueVoucher()">🎁 Issue Voucher</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Gift Voucher Log</div>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <span id="voucherSummary" style="font-size:0.8rem;color:var(--ash);"></span>
+          <button class="btn btn-secondary btn-sm" onclick="exportVouchersExcel()">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="voucherLog"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══════════════ EXPENSES ══════════════ -->
@@ -1302,6 +1339,7 @@ const KEYS = {
   expenses: 'klay_expenses',
   snapshots:'klay_snapshots',
   float:    'klay_float',
+  vouchers: 'klay_vouchers',
 };
 
 // ══════════════════════════════════════════
@@ -1322,6 +1360,7 @@ const TAB_MAP = {
   klay_expenses: 'Expenses',
   klay_snapshots:'Snapshots',
   klay_float:    'Float',
+  klay_vouchers: 'Vouchers',
 };
 
 function setSyncStatus(state, msg) {
@@ -1501,6 +1540,7 @@ if (!SALES.classes) SALES.classes = [];
 let EXPENSES = load(KEYS.expenses) || [];
 let SNAPSHOTS = load(KEYS.snapshots) || [];
 let FLOAT = load(KEYS.float) || [];
+let VOUCHERS = load(KEYS.vouchers) || []; // { id, code, amount, issued, usedBy }
 
 // ══════════════════════════════════════════
 //  HELPERS
@@ -1566,7 +1606,7 @@ function showPage(id) {
   btns.forEach(b => { if (b.textContent.toLowerCase().includes(id.slice(0,4))) b.classList.add('active'); });
   if (id === 'dashboard') renderDashboard();
   if (id === 'stock') { renderStock(); populateStockAdjusts(); }
-  if (id === 'sales') { populateSalesDropdowns(); renderAllSalesLogs(); }
+  if (id === 'sales') { populateSalesDropdowns(); renderAllSalesLogs(); populateVoucherDropdowns(); }
   if (id === 'costs') renderCostsSummary();
   if (id === 'products') { renderCatalogue('shop'); renderCatalogue('pp'); }
   if (id === 'expenses') { ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); }); }
@@ -1956,14 +1996,17 @@ function addSale(stream) {
     const disc  = parseFloat(document.getElementById('is_disc').value)  || 0;
     const total = price * qty - disc;
     const cost  = prod ? calcProductCost(prod).total * qty : 0;
+    const isVoucher = document.getElementById('is_voucher')?.value || '';
     sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('is_desc').value,
-      price, qty, disc, total, cost, profit: total - cost };
+      price, qty, disc, total, cost, profit: total - cost, voucherCode: isVoucher };
+    if (isVoucher) markVoucherUsed(isVoucher, sale.id, 'instore');
     if (prod) { prod.qty = Math.max(0, (prod.qty||0) - qty); save(KEYS.products, PRODUCTS); }
     ['is_date','is_product','is_desc','is_price','is_disc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     document.getElementById('is_qty').value = 1;
     document.getElementById('is_disc').value = 0;
     document.getElementById('is_total').value = '';
     document.getElementById('is_profit').value = '';
+    document.getElementById('is_voucher').value = '';
 
   } else if (stream === 'pottery') {
     const prodId = parseInt(document.getElementById('pp_product').value);
@@ -1973,13 +2016,16 @@ function addSale(stream) {
     const disc  = parseFloat(document.getElementById('pp_disc').value)  || 0;
     const total = price * qty - disc;
     const cost  = prod ? calcProductCost(prod).total * qty : 0;
+    const ppVoucher = document.getElementById('pp_voucher')?.value || '';
     sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('pp_desc').value,
-      price, qty, disc, total, cost, profit: total - cost };
+      price, qty, disc, total, cost, profit: total - cost, voucherCode: ppVoucher };
+    if (ppVoucher) markVoucherUsed(ppVoucher, sale.id, 'pottery');
     if (prod) { prod.qty = Math.max(0, (prod.qty||0) - qty); save(KEYS.products, PRODUCTS); }
     document.getElementById('pp_qty2').value = 1;
     document.getElementById('pp_disc').value = 0;
     document.getElementById('pp_total').value = '';
     document.getElementById('pp_profit').value = '';
+    document.getElementById('pp_voucher').value = '';
 
   } else if (stream === 'workshop') {
     const price    = parseFloat(document.getElementById('ws_price').value) || 0;
@@ -1989,13 +2035,16 @@ function addSale(stream) {
     const total    = price * qty - disc;
     const cost     = costPP * qty;
     const profit   = total - cost;
+    const wsVoucher = document.getElementById('ws_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('ws_cat').value, desc: document.getElementById('ws_desc').value,
-      price, costPP, qty, disc, total, cost, profit, notes: document.getElementById('ws_notes').value };
+      price, costPP, qty, disc, total, cost, profit, notes: document.getElementById('ws_notes').value, voucherCode: wsVoucher };
+    if (wsVoucher) markVoucherUsed(wsVoucher, sale.id, 'workshop');
     document.getElementById('ws_qty').value = 1;
     document.getElementById('ws_disc').value = 0;
     document.getElementById('ws_cost').value = 0;
     document.getElementById('ws_total').value = '';
     document.getElementById('ws_profit').value = '';
+    document.getElementById('ws_voucher').value = '';
 
   } else if (stream === 'wholesale') {
     const price    = parseFloat(document.getElementById('wh_price').value) || 0;
@@ -2005,14 +2054,17 @@ function addSale(stream) {
     const total    = price * qty - disc;
     const cost     = unitCost * qty;
     const profit   = total - cost;
+    const whVoucher = document.getElementById('wh_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('wh_cat').value, desc: document.getElementById('wh_desc').value,
-      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('wh_notes').value };
+      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('wh_notes').value, voucherCode: whVoucher };
+    if (whVoucher) markVoucherUsed(whVoucher, sale.id, 'wholesale');
     document.getElementById('wh_qty').value = 1;
     document.getElementById('wh_disc').value = 0;
     document.getElementById('wh_cost').value = 0;
     document.getElementById('wh_total').value = '';
     document.getElementById('wh_profit').value = '';
     document.getElementById('wh_product').value = '';
+    document.getElementById('wh_voucher').value = '';
 
   } else if (stream === 'custom') {
     const price    = parseFloat(document.getElementById('cu_price').value) || 0;
@@ -2022,13 +2074,16 @@ function addSale(stream) {
     const total    = price * qty - disc;
     const cost     = unitCost * qty;
     const profit   = total - cost;
+    const cuVoucher = document.getElementById('cu_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('cu_cat').value, desc: document.getElementById('cu_desc').value,
-      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cu_notes').value };
+      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cu_notes').value, voucherCode: cuVoucher };
+    if (cuVoucher) markVoucherUsed(cuVoucher, sale.id, 'custom');
     document.getElementById('cu_qty').value = 1;
     document.getElementById('cu_disc').value = 0;
     document.getElementById('cu_cost').value = 0;
     document.getElementById('cu_total').value = '';
     document.getElementById('cu_profit').value = '';
+    document.getElementById('cu_voucher').value = '';
 
   } else if (stream === 'classes') {
     const price    = parseFloat(document.getElementById('cl_price').value) || 0;
@@ -2038,13 +2093,16 @@ function addSale(stream) {
     const total    = price * qty - disc;
     const cost     = unitCost * qty;
     const profit   = total - cost;
+    const clVoucher = document.getElementById('cl_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('cl_cat').value, desc: document.getElementById('cl_desc').value,
-      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cl_notes').value };
+      price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cl_notes').value, voucherCode: clVoucher };
+    if (clVoucher) markVoucherUsed(clVoucher, sale.id, 'classes');
     document.getElementById('cl_qty').value = 1;
     document.getElementById('cl_disc').value = 0;
     document.getElementById('cl_cost').value = 0;
     document.getElementById('cl_total').value = '';
     document.getElementById('cl_profit').value = '';
+    document.getElementById('cl_voucher').value = '';
   }
 
   SALES[stream].push(sale);
@@ -2096,7 +2154,7 @@ function renderSalesLog(stream) {
       <th>Description</th><th>Unit Price</th><th>Qty</th>
       <th>Discount</th><th>Total</th>
       <th>Profit</th>
-      <th>Notes</th><th></th>
+      <th>Notes</th><th>Voucher</th><th></th>
     </tr></thead>
     <tbody>
       ${data.map(s => `<tr>
@@ -2109,10 +2167,11 @@ function renderSalesLog(stream) {
         <td class="num"><strong>${fmt(s.total)}</strong></td>
         <td class="num ${(s.profit||0)>=0?'profit-pos':'profit-neg'}">${fmt(s.profit||0)}</td>
         <td>${s.notes||'—'}</td>
+        <td>${s.voucherCode ? `<span class="badge badge-bisque" title="Voucher used">🎁 ${s.voucherCode}</span>` : '—'}</td>
         <td style="display:flex;gap:0.3rem;"><button class="btn btn-ghost btn-sm" onclick="openSaleEdit('${stream}',${s.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteSale('${stream}',${s.id})">✕</button></td>
       </tr>`).join('')}
       <tr style="background:var(--sand);font-weight:600;">
-        <td colspan="6" style="text-align:right;padding-right:0.8rem;">Period Total</td>
+        <td colspan="7" style="text-align:right;padding-right:0.8rem;">Period Total</td>
         <td class="num">${fmt(totalRevenue)}</td>
         <td class="num profit-pos">${fmt(totalProfit)}</td>
         <td colspan="2"></td>
@@ -2123,6 +2182,8 @@ function renderSalesLog(stream) {
 
 function renderAllSalesLogs() {
   ['instore','pottery','workshop','wholesale','custom','classes'].forEach(renderSalesLog);
+  renderVoucherLog();
+  populateVoucherDropdowns();
 }
 
 // ══════════════════════════════════════════
@@ -3049,6 +3110,155 @@ function saveSaleEdit() {
   showAlert('Sale updated.');
 }
 
+
+// ══════════════════════════════════════════
+//  GIFT VOUCHERS
+// ══════════════════════════════════════════
+function generateVoucherCode() {
+  const prefix = 'KLAY';
+  const year = new Date().getFullYear();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  document.getElementById('gv_code').value = `${prefix}-${year}-${rand}`;
+}
+
+function getAvailableVouchers() {
+  return VOUCHERS.filter(v => !v.used);
+}
+
+function populateVoucherDropdowns() {
+  const available = getAvailableVouchers();
+  const opts = '<option value="">— None —</option>' +
+    available.map(v => `<option value="${v.code}">${v.code} — ${fmt(v.amount)}${v.customer ? ' (' + v.customer + ')' : ''}</option>`).join('');
+  ['is','pp','ws','wh','cu','cl'].forEach(prefix => {
+    const sel = document.getElementById(prefix + '_voucher');
+    if (sel) { const was = sel.value; sel.innerHTML = opts; sel.value = was; }
+  });
+}
+
+function applyVoucherDiscount(prefix) {
+  const sel = document.getElementById(prefix + '_voucher');
+  if (!sel || !sel.value) return;
+  const v = VOUCHERS.find(v => v.code === sel.value);
+  if (!v) return;
+  // Set discount field to voucher value
+  const discEl = document.getElementById(prefix + '_disc');
+  if (discEl) { discEl.value = v.amount.toFixed(2); calcSaleTotal(prefix); }
+  showAlert(`Voucher ${v.code} applied — ${fmt(v.amount)} discount set.`);
+}
+
+function issueVoucher() {
+  const code     = document.getElementById('gv_code').value.trim().toUpperCase();
+  const amount   = parseFloat(document.getElementById('gv_amount').value) || 0;
+  const date     = document.getElementById('gv_date').value;
+  const customer = document.getElementById('gv_customer').value.trim();
+  const notes    = document.getElementById('gv_notes').value.trim();
+
+  if (!code)   { showAlert('Please enter a voucher code.', 'error'); return; }
+  if (!amount) { showAlert('Please enter a voucher value.', 'error'); return; }
+  if (!date)   { showAlert('Please enter a date.', 'error'); return; }
+  if (VOUCHERS.find(v => v.code === code)) {
+    showAlert(`Code "${code}" already exists. Please use a unique code.`, 'error'); return;
+  }
+
+  VOUCHERS.push({ id: Date.now(), code, amount, date, customer, notes, used: false, usedBy: null, usedDate: null });
+  save(KEYS.vouchers, VOUCHERS);
+  renderVoucherLog();
+  populateVoucherDropdowns();
+
+  document.getElementById('gv_code').value     = '';
+  document.getElementById('gv_amount').value   = '';
+  document.getElementById('gv_customer').value = '';
+  document.getElementById('gv_notes').value    = '';
+  showAlert(`Gift voucher ${code} issued for ${fmt(amount)}.`);
+}
+
+function markVoucherUsed(code, saleId, stream) {
+  const v = VOUCHERS.find(v => v.code === code);
+  if (!v) return;
+  v.used     = true;
+  v.usedBy   = saleId;
+  v.usedStream = stream;
+  v.usedDate = new Date().toISOString().slice(0,10);
+  save(KEYS.vouchers, VOUCHERS);
+  renderVoucherLog();
+  populateVoucherDropdowns();
+}
+
+function voidVoucher(id) {
+  id = Number(id);
+  const v = VOUCHERS.find(v => Number(v.id) === id);
+  if (!v) return;
+  if (v.used) { showAlert('Cannot void a voucher that has already been redeemed.', 'error'); return; }
+  if (!window.confirm(`Void voucher ${v.code}? This cannot be undone.`)) return;
+  VOUCHERS = VOUCHERS.filter(v => Number(v.id) !== id);
+  save(KEYS.vouchers, VOUCHERS);
+  renderVoucherLog();
+  populateVoucherDropdowns();
+  showAlert('Voucher voided.');
+}
+
+function renderVoucherLog() {
+  const el = document.getElementById('voucherLog');
+  if (!el) return;
+
+  const active  = VOUCHERS.filter(v => !v.used);
+  const redeemed= VOUCHERS.filter(v => v.used);
+  const totalIssued   = VOUCHERS.reduce((s,v) => s + v.amount, 0);
+  const totalRedeemed = redeemed.reduce((s,v) => s + v.amount, 0);
+  const totalActive   = active.reduce((s,v) => s + v.amount, 0);
+
+  const summEl = document.getElementById('voucherSummary');
+  if (summEl) summEl.innerHTML = `<span class="badge badge-green">${active.length} active — ${fmt(totalActive)}</span>&nbsp;<span class="badge badge-clay">${redeemed.length} redeemed — ${fmt(totalRedeemed)}</span>`;
+
+  if (!VOUCHERS.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">🎁</div>No gift vouchers issued yet.</div>';
+    return;
+  }
+
+  const rows = [...VOUCHERS].sort((a,b) => b.id - a.id).map(v => `<tr>
+    <td>${v.date}</td>
+    <td><strong>${v.code}</strong></td>
+    <td class="num">${fmt(v.amount)}</td>
+    <td>${v.customer || '—'}</td>
+    <td>${v.notes || '—'}</td>
+    <td style="text-align:center;">
+      ${v.used
+        ? `<span class="badge badge-clay">✓ Redeemed ${v.usedDate || ''}</span>`
+        : `<span class="badge badge-green">Available</span>`}
+    </td>
+    <td>
+      ${v.used ? '—' : `<button class="btn btn-danger btn-sm" onclick="voidVoucher(${v.id})">Void</button>`}
+    </td>
+  </tr>`).join('');
+
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Date</th><th>Code</th><th>Value</th><th>Customer</th><th>Notes</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="background:var(--sand);font-weight:600;">
+      <td colspan="2">Totals</td>
+      <td class="num">${fmt(totalIssued)}</td>
+      <td colspan="2"></td>
+      <td style="font-size:0.75rem;color:var(--ash);">${fmt(totalActive)} outstanding</td>
+      <td></td>
+    </tr></tfoot>
+  </table></div>`;
+}
+
+function exportVouchersExcel() {
+  if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded.', 'error'); return; }
+  if (!VOUCHERS.length) { showAlert('No vouchers to export.', 'error'); return; }
+  const wb = XLSX.utils.book_new();
+  const headers = ['Date Issued','Code','Value (USD)','Customer','Notes','Status','Used Date'];
+  const rows = VOUCHERS.map(v => [v.date, v.code, v.amount, v.customer||'', v.notes||'', v.used?'Redeemed':'Available', v.usedDate||'']);
+  const ws = XLSX.utils.aoa_to_sheet([['Klay Ceramics — Gift Vouchers'], [], headers, ...rows]);
+  ws['!cols'] = [{wch:12},{wch:18},{wch:12},{wch:20},{wch:25},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Gift Vouchers');
+  XLSX.writeFile(wb, 'KlayCeramics_GiftVouchers.xlsx');
+  showAlert('Vouchers exported.');
+}
+
 // ══════════════════════════════════════════
 //  GOOGLE AUTH
 // ══════════════════════════════════════════
@@ -3165,6 +3375,7 @@ function bootApp() {
   EXPENSES = load('klay_expenses') || [];
   SNAPSHOTS = load('klay_snapshots') || [];
   FLOAT = load('klay_float') || [];
+  VOUCHERS = load('klay_vouchers') || [];
 
   loadCostInputs();
   renderCostsSummary();
@@ -3178,6 +3389,8 @@ function bootApp() {
   calcQuote();
   updateFloatTypeStyle();
   renderFloat();
+  renderVoucherLog();
+  populateVoucherDropdowns();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
