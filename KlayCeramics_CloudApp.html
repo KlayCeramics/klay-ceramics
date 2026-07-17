@@ -471,6 +471,7 @@
     <label style="font-size:0.78rem;color:var(--ash);text-transform:uppercase;letter-spacing:0.06em;">View Month</label>
     <select id="dashMonthSelect" onchange="renderDashboard()"></select>
     <button class="btn btn-secondary btn-sm" onclick="pushAllToSheets()" title="Push all local data up to Google Sheets">⬆ Upload Local Data</button>
+    <button class="btn btn-ghost btn-sm" onclick="reloadFromSheets()" title="Pull latest data from Google Sheets">↓ Reload from Sheets</button>
   </div>
 
   <div class="stats-grid" id="dashStats"></div>
@@ -1570,33 +1571,78 @@ async function readAllFromSheets() {
 }
 
 async function pushAllToSheets() {
-  if (!SHEET_ID || !OAUTH_TOKEN) { showAlert('Not connected to Google Sheets.', 'error'); return; }
+  if (!SHEET_ID || !OAUTH_TOKEN) {
+    showAlert('Not signed in to Google. Click Sign In first.', 'error');
+    document.getElementById('reconnectBar').style.display = 'flex';
+    return;
+  }
   setSyncStatus('syncing', 'Uploading all data…');
   showLoadingOverlay('Uploading all data to Google Sheets…');
   await ensureSheetTabs();
-  // Populate sub-key cache from current SALES and PRODUCTS state before pushing
+
+  // Always read from localStorage as the source of truth
+  // Split sales and products into their sub-keys before pushing
+  const rawSales    = JSON.parse(localStorage.getItem('klay_sales')    || 'null') || {};
+  const rawProducts = JSON.parse(localStorage.getItem('klay_products') || 'null') || {};
+
   const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
   streams.forEach(s => {
-    const sk = 'klay_sales_' + s;
-    if (!_cache[sk]) _cache[sk] = (SALES[s] || []);
+    _cache['klay_sales_' + s] = rawSales[s] || [];
   });
-  if (!_cache['klay_products_shop']) _cache['klay_products_shop'] = PRODUCTS.shop || [];
-  if (!_cache['klay_products_pp'])   _cache['klay_products_pp']   = PRODUCTS.pp   || [];
+  _cache['klay_products_shop'] = rawProducts.shop || [];
+  _cache['klay_products_pp']   = rawProducts.pp   || [];
+
+  // Load all other keys directly from localStorage into cache
+  ['klay_costs','klay_expenses','klay_float','klay_vouchers'].forEach(k => {
+    const raw = localStorage.getItem(k);
+    if (raw) { try { _cache[k] = JSON.parse(raw); } catch(e) {} }
+  });
+
   let allOk = true;
+  const results = [];
   for (const key of Object.keys(TAB_MAP)) {
-    const data = _cache[key] !== undefined ? _cache[key] : load(key);
+    const data = _cache[key];
     if (data !== null && data !== undefined) {
       const ok = await writeSheetTab(key, data);
+      results.push({ key, ok });
       if (!ok) allOk = false;
     }
   }
+
   hideLoadingOverlay();
   if (allOk) {
     setSyncStatus('ok', 'All data uploaded ✓');
-    showAlert('✓ All data successfully uploaded to Google Sheets!');
+    showAlert('✓ All data uploaded! Reloading from Sheets…');
+    // Reload UI from what we just pushed
+    setTimeout(async () => {
+      showLoadingOverlay('Reloading your data…');
+      await readAllFromSheets();
+      hideLoadingOverlay();
+      bootApp();
+      showAlert('✓ Data loaded successfully!');
+    }, 800);
   } else {
+    const failed = results.filter(r => !r.ok).map(r => r.key).join(', ');
     setSyncStatus('error', 'Some writes failed');
-    showAlert('Some data failed to upload. Check your Sheet ID and try again.', 'error');
+    showAlert(`Upload partially failed. Failed keys: ${failed}. Check connection and try again.`, 'error');
+    console.error('Failed writes:', failed);
+  }
+}
+
+async function reloadFromSheets() {
+  if (!SHEET_ID || !OAUTH_TOKEN) {
+    showAlert('Not signed in. Click Sign In first.', 'error');
+    document.getElementById('reconnectBar').style.display = 'flex';
+    return;
+  }
+  showLoadingOverlay('Loading your data from Google Sheets…');
+  const ok = await readAllFromSheets();
+  hideLoadingOverlay();
+  if (ok) {
+    bootApp();
+    showAlert('✓ Data reloaded from Google Sheets!');
+  } else {
+    showAlert('Could not load from Sheets. Check your connection and try again.', 'error');
   }
 }
 
