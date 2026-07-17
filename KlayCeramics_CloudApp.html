@@ -639,6 +639,8 @@
         <div class="form-group"><label>Total (auto)</label><input type="text" id="is_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="is_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="is_voucher" onchange="applyVoucherDiscount('is')"><option value="">— None —</option></select></div>
+        <div class="form-group" id="is_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="is_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
+        <div class="form-group" id="is_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="is_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('is')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('instore')">Record Sale</button></div>
     </div>
@@ -667,6 +669,8 @@
         <div class="form-group"><label>Total (auto)</label><input type="text" id="pp_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="pp_voucher" onchange="applyVoucherDiscount('pp')"><option value="">— None —</option></select></div>
+        <div class="form-group" id="pp_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="pp_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
+        <div class="form-group" id="pp_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="pp_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('pp')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('pottery')">Record Sale</button></div>
     </div>
@@ -697,6 +701,8 @@
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="ws_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="ws_notes"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="ws_voucher" onchange="applyVoucherDiscount('ws')"><option value="">— None —</option></select></div>
+        <div class="form-group" id="ws_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="ws_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
+        <div class="form-group" id="ws_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="ws_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('ws')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('workshop')">Record Sale</button></div>
     </div>
@@ -728,6 +734,8 @@
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="wh_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="wh_notes"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="wh_voucher" onchange="applyVoucherDiscount('wh')"><option value="">— None —</option></select></div>
+        <div class="form-group" id="wh_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="wh_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
+        <div class="form-group" id="wh_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="wh_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('wh')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('wholesale')">Record Sale</button></div>
     </div>
@@ -758,6 +766,8 @@
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="cu_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cu_notes"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="cu_voucher" onchange="applyVoucherDiscount('cu')"><option value="">— None —</option></select></div>
+        <div class="form-group" id="cu_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="cu_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
+        <div class="form-group" id="cu_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="cu_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('cu')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('custom')">Record Sale</button></div>
     </div>
@@ -788,6 +798,8 @@
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="cl_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cl_notes"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="cl_voucher" onchange="applyVoucherDiscount('cl')"><option value="">— None —</option></select></div>
+        <div class="form-group" id="cl_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="cl_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
+        <div class="form-group" id="cl_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="cl_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('cl')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="addSale('classes')">Record Sale</button></div>
     </div>
@@ -1325,6 +1337,29 @@
   </div>
 </div>
 
+
+<!-- ══════════════ VOUCHER EDIT MODAL ══════════════ -->
+<div class="modal-overlay" id="voucherEditModal" onclick="if(event.target===this)closeVoucherEdit()">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">Edit Gift Voucher</div>
+      <button class="modal-close" onclick="closeVoucherEdit()">✕</button>
+    </div>
+    <input type="hidden" id="vedit_id">
+    <div class="form-grid wide">
+      <div class="form-group"><label>Date Issued</label><input type="date" id="vedit_date"></div>
+      <div class="form-group"><label>Voucher Code</label><input type="text" id="vedit_code" readonly style="background:var(--sand);color:var(--ash);"></div>
+      <div class="form-group"><label>Remaining Balance (USD)</label><input type="number" id="vedit_amount" step="0.01" min="0"><span class="inline-calc">Edit this to manually correct the remaining balance</span></div>
+      <div class="form-group"><label>Customer Name</label><input type="text" id="vedit_customer"></div>
+      <div class="form-group"><label>Notes</label><input type="text" id="vedit_notes"></div>
+    </div>
+    <div class="flex-end" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeVoucherEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveVoucherEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- end app-body -->
 
 <script>
@@ -1353,14 +1388,28 @@ let _dirty = {};
 let _syncTimer = null;
 let _syncErrors = 0;
 
+// TAB_MAP: maps localStorage key → Sheet tab name
+// klay_sales is split into sub-keys, one per stream, to stay under 50k char cell limit
 const TAB_MAP = {
-  klay_costs:    'Costs',
-  klay_products: 'Products',
-  klay_sales:    'Sales',
-  klay_expenses: 'Expenses',
-  klay_snapshots:'Snapshots',
-  klay_float:    'Float',
-  klay_vouchers: 'Vouchers',
+  klay_costs:          'Costs',
+  klay_products_shop:  'Products_Shop',
+  klay_products_pp:    'Products_PP',
+  klay_sales_instore:  'Sales_InStore',
+  klay_sales_pottery:  'Sales_Pottery',
+  klay_sales_workshop: 'Sales_Workshop',
+  klay_sales_wholesale:'Sales_Wholesale',
+  klay_sales_custom:   'Sales_Custom',
+  klay_sales_classes:  'Sales_Classes',
+  klay_expenses:       'Expenses',
+  klay_float:          'Float',
+  klay_vouchers:       'Vouchers',
+};
+
+// Virtual keys that are assembled from sub-keys
+const VIRTUAL_KEYS = {
+  klay_products: ['klay_products_shop','klay_products_pp'],
+  klay_sales:    ['klay_sales_instore','klay_sales_pottery','klay_sales_workshop',
+                  'klay_sales_wholesale','klay_sales_custom','klay_sales_classes'],
 };
 
 function setSyncStatus(state, msg) {
@@ -1381,7 +1430,25 @@ function load(key) {
 function save(key, data) {
   _cache[key] = data;
   try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
-  _dirty[key] = true;
+  // For virtual keys (sales, products), also update sub-keys in cache
+  if (key === 'klay_sales') {
+    const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
+    streams.forEach(s => {
+      const subKey = 'klay_sales_' + s;
+      _cache[subKey] = data[s] || [];
+      _dirty[subKey] = true;
+      try { localStorage.setItem(subKey, JSON.stringify(_cache[subKey])); } catch(e) {}
+    });
+  } else if (key === 'klay_products') {
+    _cache['klay_products_shop'] = data.shop || [];
+    _cache['klay_products_pp']   = data.pp   || [];
+    _dirty['klay_products_shop'] = true;
+    _dirty['klay_products_pp']   = true;
+    try { localStorage.setItem('klay_products_shop', JSON.stringify(data.shop||[])); } catch(e) {}
+    try { localStorage.setItem('klay_products_pp',   JSON.stringify(data.pp||[]));   } catch(e) {}
+  } else {
+    _dirty[key] = true;
+  }
   if (_syncTimer) clearTimeout(_syncTimer);
   _syncTimer = setTimeout(flushToSheets, 1500);
 }
@@ -1427,8 +1494,9 @@ async function writeSheetTab(key, data) {
 
 async function flushToSheets() {
   if (!SHEET_ID || !OAUTH_TOKEN) return;
-  const keys = Object.keys(_dirty);
-  if (!keys.length) return;
+  // Only flush keys that are in TAB_MAP (not virtual aggregates like klay_sales)
+  const keys = Object.keys(_dirty).filter(k => TAB_MAP[k]);
+  if (!keys.length) { _dirty = {}; return; }
   _dirty = {};
   setSyncStatus('syncing', 'Saving…');
   let allOk = true;
@@ -1443,7 +1511,6 @@ async function flushToSheets() {
     _syncErrors++;
     setSyncStatus('error', 'Save failed — check connection');
     if (_syncErrors < 3) {
-      // Retry once after 5 seconds
       keys.forEach(k => _dirty[k] = true);
       setTimeout(flushToSheets, 5000);
     }
@@ -1454,16 +1521,15 @@ async function readAllFromSheets() {
   if (!SHEET_ID || !OAUTH_TOKEN) return false;
   setSyncStatus('syncing', 'Loading…');
   try {
-    const ranges = Object.values(TAB_MAP).map(t => `ranges=${encodeURIComponent(t + '!A1')}`).join('&');
-    // Use only OAuth for auth — do NOT append API key here
+    const tabKeys = Object.keys(TAB_MAP);
+    const ranges  = tabKeys.map(k => `ranges=${encodeURIComponent(TAB_MAP[k] + '!A1')}`).join('&');
     const resp = await sheetsRequest(
       `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?${ranges}`
     );
     const data = await resp.json();
-    const keys = Object.keys(TAB_MAP);
     let loaded = 0;
     (data.valueRanges || []).forEach((vr, i) => {
-      const key = keys[i];
+      const key = tabKeys[i];
       const cellVal = vr.values?.[0]?.[0];
       if (cellVal) {
         try {
@@ -1474,6 +1540,25 @@ async function readAllFromSheets() {
         } catch(e) { console.warn('Parse error for', key, e); }
       }
     });
+
+    // Reassemble virtual klay_sales from sub-keys
+    _cache['klay_sales'] = {
+      instore:   _cache['klay_sales_instore']  || [],
+      pottery:   _cache['klay_sales_pottery']  || [],
+      workshop:  _cache['klay_sales_workshop'] || [],
+      wholesale: _cache['klay_sales_wholesale']|| [],
+      custom:    _cache['klay_sales_custom']   || [],
+      classes:   _cache['klay_sales_classes']  || [],
+    };
+    localStorage.setItem('klay_sales', JSON.stringify(_cache['klay_sales']));
+
+    // Reassemble virtual klay_products from sub-keys
+    _cache['klay_products'] = {
+      shop: _cache['klay_products_shop'] || [],
+      pp:   _cache['klay_products_pp']   || [],
+    };
+    localStorage.setItem('klay_products', JSON.stringify(_cache['klay_products']));
+
     setSyncStatus('ok', `Loaded (${loaded} data sets)`);
     return true;
   } catch(e) {
@@ -1484,15 +1569,22 @@ async function readAllFromSheets() {
 }
 
 async function pushAllToSheets() {
-  // Force-write ALL local data up to Sheets (used after import or first connect)
   if (!SHEET_ID || !OAUTH_TOKEN) { showAlert('Not connected to Google Sheets.', 'error'); return; }
   setSyncStatus('syncing', 'Uploading all data…');
   showLoadingOverlay('Uploading all data to Google Sheets…');
   await ensureSheetTabs();
+  // Populate sub-key cache from current SALES and PRODUCTS state before pushing
+  const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
+  streams.forEach(s => {
+    const sk = 'klay_sales_' + s;
+    if (!_cache[sk]) _cache[sk] = (SALES[s] || []);
+  });
+  if (!_cache['klay_products_shop']) _cache['klay_products_shop'] = PRODUCTS.shop || [];
+  if (!_cache['klay_products_pp'])   _cache['klay_products_pp']   = PRODUCTS.pp   || [];
   let allOk = true;
   for (const key of Object.keys(TAB_MAP)) {
-    const data = load(key);
-    if (data !== null) {
+    const data = _cache[key] !== undefined ? _cache[key] : load(key);
+    if (data !== null && data !== undefined) {
       const ok = await writeSheetTab(key, data);
       if (!ok) allOk = false;
     }
@@ -1540,7 +1632,9 @@ if (!SALES.classes) SALES.classes = [];
 let EXPENSES = load(KEYS.expenses) || [];
 let SNAPSHOTS = load(KEYS.snapshots) || [];
 let FLOAT = load(KEYS.float) || [];
-let VOUCHERS = load(KEYS.vouchers) || []; // { id, code, amount, issued, usedBy }
+let VOUCHERS = load(KEYS.vouchers) || [];
+// Migrate old vouchers that don't have balance field
+VOUCHERS.forEach(v => { if (v.balance === undefined) v.balance = v.used ? 0 : v.amount; if (!v.originalAmount) v.originalAmount = v.amount; });
 
 // ══════════════════════════════════════════
 //  HELPERS
@@ -1999,7 +2093,11 @@ function addSale(stream) {
     const isVoucher = document.getElementById('is_voucher')?.value || '';
     sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('is_desc').value,
       price, qty, disc, total, cost, profit: total - cost, voucherCode: isVoucher };
-    if (isVoucher) markVoucherUsed(isVoucher, sale.id, 'instore');
+    if (isVoucher) {
+      const isApplyEl = document.getElementById('is_voucher_apply');
+      const isDiscVal = parseFloat(document.getElementById('is_disc')?.value) || 0;
+      applyVoucherToSale(isVoucher, isDiscVal, sale.id, 'instore');
+    }
     if (prod) { prod.qty = Math.max(0, (prod.qty||0) - qty); save(KEYS.products, PRODUCTS); }
     ['is_date','is_product','is_desc','is_price','is_disc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     document.getElementById('is_qty').value = 1;
@@ -2007,6 +2105,9 @@ function addSale(stream) {
     document.getElementById('is_total').value = '';
     document.getElementById('is_profit').value = '';
     document.getElementById('is_voucher').value = '';
+    const _isvi = document.getElementById('is_voucher_info'); if(_isvi) _isvi.style.display='none';
+    const _isvs = document.getElementById('is_voucher_split'); if(_isvs) _isvs.style.display='none';
+    const _isva = document.getElementById('is_voucher_apply'); if(_isva) _isva.value='';
 
   } else if (stream === 'pottery') {
     const prodId = parseInt(document.getElementById('pp_product').value);
@@ -2019,13 +2120,20 @@ function addSale(stream) {
     const ppVoucher = document.getElementById('pp_voucher')?.value || '';
     sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('pp_desc').value,
       price, qty, disc, total, cost, profit: total - cost, voucherCode: ppVoucher };
-    if (ppVoucher) markVoucherUsed(ppVoucher, sale.id, 'pottery');
+    if (ppVoucher) {
+      const ppApplyEl = document.getElementById('pp_voucher_apply');
+      const ppDiscVal = parseFloat(document.getElementById('pp_disc')?.value) || 0;
+      applyVoucherToSale(ppVoucher, ppDiscVal, sale.id, 'pottery');
+    }
     if (prod) { prod.qty = Math.max(0, (prod.qty||0) - qty); save(KEYS.products, PRODUCTS); }
     document.getElementById('pp_qty2').value = 1;
     document.getElementById('pp_disc').value = 0;
     document.getElementById('pp_total').value = '';
     document.getElementById('pp_profit').value = '';
     document.getElementById('pp_voucher').value = '';
+    const _ppvi = document.getElementById('pp_voucher_info'); if(_ppvi) _ppvi.style.display='none';
+    const _ppvs = document.getElementById('pp_voucher_split'); if(_ppvs) _ppvs.style.display='none';
+    const _ppva = document.getElementById('pp_voucher_apply'); if(_ppva) _ppva.value='';
 
   } else if (stream === 'workshop') {
     const price    = parseFloat(document.getElementById('ws_price').value) || 0;
@@ -2038,13 +2146,20 @@ function addSale(stream) {
     const wsVoucher = document.getElementById('ws_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('ws_cat').value, desc: document.getElementById('ws_desc').value,
       price, costPP, qty, disc, total, cost, profit, notes: document.getElementById('ws_notes').value, voucherCode: wsVoucher };
-    if (wsVoucher) markVoucherUsed(wsVoucher, sale.id, 'workshop');
+    if (wsVoucher) {
+      const wsApplyEl = document.getElementById('ws_voucher_apply');
+      const wsDiscVal = parseFloat(document.getElementById('ws_disc')?.value) || 0;
+      applyVoucherToSale(wsVoucher, wsDiscVal, sale.id, 'workshop');
+    }
     document.getElementById('ws_qty').value = 1;
     document.getElementById('ws_disc').value = 0;
     document.getElementById('ws_cost').value = 0;
     document.getElementById('ws_total').value = '';
     document.getElementById('ws_profit').value = '';
     document.getElementById('ws_voucher').value = '';
+    const _wsvi = document.getElementById('ws_voucher_info'); if(_wsvi) _wsvi.style.display='none';
+    const _wsvs = document.getElementById('ws_voucher_split'); if(_wsvs) _wsvs.style.display='none';
+    const _wsva = document.getElementById('ws_voucher_apply'); if(_wsva) _wsva.value='';
 
   } else if (stream === 'wholesale') {
     const price    = parseFloat(document.getElementById('wh_price').value) || 0;
@@ -2057,7 +2172,11 @@ function addSale(stream) {
     const whVoucher = document.getElementById('wh_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('wh_cat').value, desc: document.getElementById('wh_desc').value,
       price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('wh_notes').value, voucherCode: whVoucher };
-    if (whVoucher) markVoucherUsed(whVoucher, sale.id, 'wholesale');
+    if (whVoucher) {
+      const whApplyEl = document.getElementById('wh_voucher_apply');
+      const whDiscVal = parseFloat(document.getElementById('wh_disc')?.value) || 0;
+      applyVoucherToSale(whVoucher, whDiscVal, sale.id, 'wholesale');
+    }
     document.getElementById('wh_qty').value = 1;
     document.getElementById('wh_disc').value = 0;
     document.getElementById('wh_cost').value = 0;
@@ -2065,6 +2184,9 @@ function addSale(stream) {
     document.getElementById('wh_profit').value = '';
     document.getElementById('wh_product').value = '';
     document.getElementById('wh_voucher').value = '';
+    const _whvi = document.getElementById('wh_voucher_info'); if(_whvi) _whvi.style.display='none';
+    const _whvs = document.getElementById('wh_voucher_split'); if(_whvs) _whvs.style.display='none';
+    const _whva = document.getElementById('wh_voucher_apply'); if(_whva) _whva.value='';
 
   } else if (stream === 'custom') {
     const price    = parseFloat(document.getElementById('cu_price').value) || 0;
@@ -2077,13 +2199,20 @@ function addSale(stream) {
     const cuVoucher = document.getElementById('cu_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('cu_cat').value, desc: document.getElementById('cu_desc').value,
       price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cu_notes').value, voucherCode: cuVoucher };
-    if (cuVoucher) markVoucherUsed(cuVoucher, sale.id, 'custom');
+    if (cuVoucher) {
+      const cuApplyEl = document.getElementById('cu_voucher_apply');
+      const cuDiscVal = parseFloat(document.getElementById('cu_disc')?.value) || 0;
+      applyVoucherToSale(cuVoucher, cuDiscVal, sale.id, 'custom');
+    }
     document.getElementById('cu_qty').value = 1;
     document.getElementById('cu_disc').value = 0;
     document.getElementById('cu_cost').value = 0;
     document.getElementById('cu_total').value = '';
     document.getElementById('cu_profit').value = '';
     document.getElementById('cu_voucher').value = '';
+    const _cuvi = document.getElementById('cu_voucher_info'); if(_cuvi) _cuvi.style.display='none';
+    const _cuvs = document.getElementById('cu_voucher_split'); if(_cuvs) _cuvs.style.display='none';
+    const _cuva = document.getElementById('cu_voucher_apply'); if(_cuva) _cuva.value='';
 
   } else if (stream === 'classes') {
     const price    = parseFloat(document.getElementById('cl_price').value) || 0;
@@ -2096,13 +2225,20 @@ function addSale(stream) {
     const clVoucher = document.getElementById('cl_voucher')?.value || '';
     sale = { ...sale, cat: document.getElementById('cl_cat').value, desc: document.getElementById('cl_desc').value,
       price, unitCost, qty, disc, total, cost, profit, notes: document.getElementById('cl_notes').value, voucherCode: clVoucher };
-    if (clVoucher) markVoucherUsed(clVoucher, sale.id, 'classes');
+    if (clVoucher) {
+      const clApplyEl = document.getElementById('cl_voucher_apply');
+      const clDiscVal = parseFloat(document.getElementById('cl_disc')?.value) || 0;
+      applyVoucherToSale(clVoucher, clDiscVal, sale.id, 'classes');
+    }
     document.getElementById('cl_qty').value = 1;
     document.getElementById('cl_disc').value = 0;
     document.getElementById('cl_cost').value = 0;
     document.getElementById('cl_total').value = '';
     document.getElementById('cl_profit').value = '';
     document.getElementById('cl_voucher').value = '';
+    const _clvi = document.getElementById('cl_voucher_info'); if(_clvi) _clvi.style.display='none';
+    const _clvs = document.getElementById('cl_voucher_split'); if(_clvs) _clvs.style.display='none';
+    const _clva = document.getElementById('cl_voucher_apply'); if(_clva) _clva.value='';
   }
 
   SALES[stream].push(sale);
@@ -3122,28 +3258,62 @@ function generateVoucherCode() {
 }
 
 function getAvailableVouchers() {
-  return VOUCHERS.filter(v => !v.used);
+  // Available = not fully used (balance > 0)
+  return VOUCHERS.filter(v => !v.used && (v.balance || 0) > 0);
 }
 
 function populateVoucherDropdowns() {
   const available = getAvailableVouchers();
   const opts = '<option value="">— None —</option>' +
-    available.map(v => `<option value="${v.code}">${v.code} — ${fmt(v.amount)}${v.customer ? ' (' + v.customer + ')' : ''}</option>`).join('');
-  ['is','pp','ws','wh','cu','cl'].forEach(prefix => {
-    const sel = document.getElementById(prefix + '_voucher');
-    if (sel) { const was = sel.value; sel.innerHTML = opts; sel.value = was; }
+    available.map(v => `<option value="${v.code}">${v.code} — ${fmt(v.balance || v.amount)} remaining${v.customer ? ' (' + v.customer + ')' : ''}</option>`).join('');
+  ['is','pp','ws','wh','cu','cl'].forEach(px => {
+    const sel = document.getElementById(px + '_voucher');
+    if (sel) { const was = sel.value; sel.innerHTML = opts; if (was) sel.value = was; }
   });
 }
 
 function applyVoucherDiscount(prefix) {
   const sel = document.getElementById(prefix + '_voucher');
-  if (!sel || !sel.value) return;
+  const infoDiv  = document.getElementById(prefix + '_voucher_info');
+  const splitDiv = document.getElementById(prefix + '_voucher_split');
+  const balEl    = document.getElementById(prefix + '_voucher_balance');
+  const applyEl  = document.getElementById(prefix + '_voucher_apply');
+
+  if (!sel || !sel.value) {
+    if (infoDiv)  infoDiv.style.display  = 'none';
+    if (splitDiv) splitDiv.style.display = 'none';
+    // Clear any previously-applied voucher discount
+    const discEl = document.getElementById(prefix + '_disc');
+    if (discEl) { discEl.value = 0; calcSaleTotal(prefix); }
+    return;
+  }
   const v = VOUCHERS.find(v => v.code === sel.value);
   if (!v) return;
-  // Set discount field to voucher value
+
+  const balance = v.balance || v.amount || 0;
+  if (infoDiv)  { infoDiv.style.display  = ''; }
+  if (splitDiv) { splitDiv.style.display = ''; }
+  if (balEl)    { balEl.value = fmt(balance); }
+  if (applyEl)  { applyEl.value = ''; applyEl.placeholder = `Max ${balance.toFixed(2)}`; }
+
+  // Auto-apply: set disc to min(balance, orderTotal) — user can override in apply field
+  _autoApplyVoucher(prefix, v);
+}
+
+function _autoApplyVoucher(prefix, v) {
+  const price  = parseFloat(document.getElementById(prefix + '_price')?.value)    || 0;
+  const qty    = parseFloat(document.getElementById(prefix + '_qty')?.value || document.getElementById(prefix + '_qty2')?.value) || 1;
+  const curDisc= 0; // start fresh
+  const orderTotal = price * qty;
+  const balance    = v.balance || v.amount || 0;
+  const applyEl    = document.getElementById(prefix + '_voucher_apply');
+  // If user has typed a custom amount, use that; else use min(balance, orderTotal)
+  const userAmt = applyEl ? parseFloat(applyEl.value) : NaN;
+  const applyAmt = isNaN(userAmt) || userAmt === 0
+    ? Math.min(balance, orderTotal)
+    : Math.min(userAmt, balance);
   const discEl = document.getElementById(prefix + '_disc');
-  if (discEl) { discEl.value = v.amount.toFixed(2); calcSaleTotal(prefix); }
-  showAlert(`Voucher ${v.code} applied — ${fmt(v.amount)} discount set.`);
+  if (discEl) { discEl.value = applyAmt.toFixed(2); calcSaleTotal(prefix); }
 }
 
 function issueVoucher() {
@@ -3160,35 +3330,62 @@ function issueVoucher() {
     showAlert(`Code "${code}" already exists. Please use a unique code.`, 'error'); return;
   }
 
-  VOUCHERS.push({ id: Date.now(), code, amount, date, customer, notes, used: false, usedBy: null, usedDate: null });
+  VOUCHERS.push({ id: Date.now(), code, amount, originalAmount: amount, balance: amount,
+    date, customer, notes, used: false, usedBy: null, usedDate: null, history: [] });
   save(KEYS.vouchers, VOUCHERS);
   renderVoucherLog();
   populateVoucherDropdowns();
+
+  // Voucher sale counts as income — add to instore sales as a voucher sale record
+  const voucherSale = { id: Date.now()+1, date, productName: 'Gift Voucher', desc: `Voucher ${code}${customer?' for '+customer:''}`,
+    price: amount, qty: 1, disc: 0, total: amount, cost: 0, profit: amount, voucherCode: code, isVoucherSale: true };
+  SALES.instore.push(voucherSale);
+  save(KEYS.sales, SALES);
+  renderSalesLog('instore');
 
   document.getElementById('gv_code').value     = '';
   document.getElementById('gv_amount').value   = '';
   document.getElementById('gv_customer').value = '';
   document.getElementById('gv_notes').value    = '';
-  showAlert(`Gift voucher ${code} issued for ${fmt(amount)}.`);
+  showAlert(`Gift voucher ${code} issued for ${fmt(amount)} — added to income.`);
 }
 
-function markVoucherUsed(code, saleId, stream) {
+function applyVoucherToSale(code, discApplied, saleId, stream) {
   const v = VOUCHERS.find(v => v.code === code);
   if (!v) return;
-  v.used     = true;
+  const today = new Date().toISOString().slice(0,10);
+  const prevBalance = v.balance || 0;
+  const newBalance  = Math.max(0, prevBalance - discApplied);
+
+  if (!v.history) v.history = [];
+  v.history.push({ date: today, saleId, stream, discApplied, balanceBefore: prevBalance, balanceAfter: newBalance });
+
+  v.balance  = newBalance;
+  v.usedDate = today;
   v.usedBy   = saleId;
   v.usedStream = stream;
-  v.usedDate = new Date().toISOString().slice(0,10);
+
+  if (newBalance <= 0) {
+    v.used = true; // fully exhausted
+  }
+  // Partially used — stays available with reduced balance
+
   save(KEYS.vouchers, VOUCHERS);
   renderVoucherLog();
   populateVoucherDropdowns();
+
+  if (newBalance > 0) {
+    showAlert(`Voucher ${code}: ${fmt(discApplied)} applied. Remaining balance: ${fmt(newBalance)}.`);
+  } else {
+    showAlert(`Voucher ${code} fully redeemed.`);
+  }
 }
 
 function voidVoucher(id) {
   id = Number(id);
   const v = VOUCHERS.find(v => Number(v.id) === id);
   if (!v) return;
-  if (v.used) { showAlert('Cannot void a voucher that has already been redeemed.', 'error'); return; }
+  if (v.used) { showAlert('Cannot void a fully redeemed voucher.', 'error'); return; }
   if (!window.confirm(`Void voucher ${v.code}? This cannot be undone.`)) return;
   VOUCHERS = VOUCHERS.filter(v => Number(v.id) !== id);
   save(KEYS.vouchers, VOUCHERS);
@@ -3197,51 +3394,97 @@ function voidVoucher(id) {
   showAlert('Voucher voided.');
 }
 
+// ── Edit voucher modal ──
+function openVoucherEdit(id) {
+  id = Number(id);
+  const v = VOUCHERS.find(v => Number(v.id) === id);
+  if (!v) return;
+  document.getElementById('voucherEditModal').style.display = 'flex';
+  document.getElementById('vedit_id').value       = id;
+  document.getElementById('vedit_date').value     = v.date || '';
+  document.getElementById('vedit_code').value     = v.code || '';
+  document.getElementById('vedit_amount').value   = v.balance !== undefined ? v.balance : v.amount;
+  document.getElementById('vedit_customer').value = v.customer || '';
+  document.getElementById('vedit_notes').value    = v.notes || '';
+}
+
+function closeVoucherEdit() {
+  document.getElementById('voucherEditModal').style.display = 'none';
+}
+
+function saveVoucherEdit() {
+  const id = Number(document.getElementById('vedit_id').value);
+  const v  = VOUCHERS.find(v => Number(v.id) === id);
+  if (!v) return;
+  v.date     = document.getElementById('vedit_date').value;
+  v.customer = document.getElementById('vedit_customer').value.trim();
+  v.notes    = document.getElementById('vedit_notes').value.trim();
+  // Allow editing remaining balance (e.g. manual correction)
+  const newBal = parseFloat(document.getElementById('vedit_amount').value) || 0;
+  v.balance    = newBal;
+  if (newBal <= 0) { v.used = true; } else { v.used = false; }
+  save(KEYS.vouchers, VOUCHERS);
+  closeVoucherEdit();
+  renderVoucherLog();
+  populateVoucherDropdowns();
+  showAlert('Voucher updated.');
+}
+
 function renderVoucherLog() {
   const el = document.getElementById('voucherLog');
   if (!el) return;
 
-  const active  = VOUCHERS.filter(v => !v.used);
-  const redeemed= VOUCHERS.filter(v => v.used);
-  const totalIssued   = VOUCHERS.reduce((s,v) => s + v.amount, 0);
-  const totalRedeemed = redeemed.reduce((s,v) => s + v.amount, 0);
-  const totalActive   = active.reduce((s,v) => s + v.amount, 0);
+  const active   = VOUCHERS.filter(v => !v.used && (v.balance||0) > 0);
+  const partial  = VOUCHERS.filter(v => !v.used && (v.balance||0) > 0 && (v.balance||0) < (v.originalAmount||v.amount));
+  const redeemed = VOUCHERS.filter(v => v.used);
+  const totalOriginal = VOUCHERS.reduce((s,v) => s + (v.originalAmount || v.amount), 0);
+  const totalBalance  = active.reduce((s,v)   => s + (v.balance || 0), 0);
+  const totalRedeemed = redeemed.reduce((s,v) => s + (v.originalAmount || v.amount), 0);
 
   const summEl = document.getElementById('voucherSummary');
-  if (summEl) summEl.innerHTML = `<span class="badge badge-green">${active.length} active — ${fmt(totalActive)}</span>&nbsp;<span class="badge badge-clay">${redeemed.length} redeemed — ${fmt(totalRedeemed)}</span>`;
+  if (summEl) summEl.innerHTML =
+    `<span class="badge badge-green">${active.length} active — ${fmt(totalBalance)} remaining</span>&nbsp;` +
+    `<span class="badge badge-clay">${redeemed.length} fully redeemed</span>`;
 
   if (!VOUCHERS.length) {
     el.innerHTML = '<div class="empty-state"><div class="ei">🎁</div>No gift vouchers issued yet.</div>';
     return;
   }
 
-  const rows = [...VOUCHERS].sort((a,b) => b.id - a.id).map(v => `<tr>
-    <td>${v.date}</td>
-    <td><strong>${v.code}</strong></td>
-    <td class="num">${fmt(v.amount)}</td>
-    <td>${v.customer || '—'}</td>
-    <td>${v.notes || '—'}</td>
-    <td style="text-align:center;">
-      ${v.used
-        ? `<span class="badge badge-clay">✓ Redeemed ${v.usedDate || ''}</span>`
-        : `<span class="badge badge-green">Available</span>`}
-    </td>
-    <td>
-      ${v.used ? '—' : `<button class="btn btn-danger btn-sm" onclick="voidVoucher(${v.id})">Void</button>`}
-    </td>
-  </tr>`).join('');
+  const rows = [...VOUCHERS].sort((a,b) => b.id - a.id).map(v => {
+    const balance = v.balance !== undefined ? v.balance : (v.used ? 0 : v.amount);
+    const origAmt = v.originalAmount || v.amount;
+    const isPartial = !v.used && balance < origAmt;
+    const statusBadge = v.used
+      ? `<span class="badge badge-clay">✓ Fully Redeemed ${v.usedDate||''}</span>`
+      : isPartial
+        ? `<span class="badge badge-bisque">Partial — ${fmt(balance)} left</span>`
+        : `<span class="badge badge-green">Available</span>`;
+    return `<tr>
+      <td>${v.date}</td>
+      <td><strong>${v.code}</strong></td>
+      <td class="num">${fmt(origAmt)}</td>
+      <td class="num" style="color:${balance>0?'var(--glaze-green)':'var(--ash)'};">${fmt(balance)}</td>
+      <td>${v.customer || '—'}</td>
+      <td>${v.notes || '—'}</td>
+      <td style="text-align:center;">${statusBadge}</td>
+      <td style="display:flex;gap:0.3rem;">
+        <button class="btn btn-ghost btn-sm" onclick="openVoucherEdit(${v.id})">✏️</button>
+        ${!v.used ? `<button class="btn btn-danger btn-sm" onclick="voidVoucher(${v.id})">Void</button>` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
 
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
-      <th>Date</th><th>Code</th><th>Value</th><th>Customer</th><th>Notes</th><th>Status</th><th></th>
+      <th>Issued</th><th>Code</th><th>Original</th><th>Balance</th><th>Customer</th><th>Notes</th><th>Status</th><th></th>
     </tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr style="background:var(--sand);font-weight:600;">
       <td colspan="2">Totals</td>
-      <td class="num">${fmt(totalIssued)}</td>
-      <td colspan="2"></td>
-      <td style="font-size:0.75rem;color:var(--ash);">${fmt(totalActive)} outstanding</td>
-      <td></td>
+      <td class="num">${fmt(totalOriginal)}</td>
+      <td class="num" style="color:var(--glaze-green);">${fmt(totalBalance)}</td>
+      <td colspan="4" style="font-size:0.75rem;color:var(--ash);">${fmt(totalBalance)} outstanding balance</td>
     </tr></tfoot>
   </table></div>`;
 }
@@ -3250,10 +3493,14 @@ function exportVouchersExcel() {
   if (typeof XLSX === 'undefined') { showAlert('Excel library not loaded.', 'error'); return; }
   if (!VOUCHERS.length) { showAlert('No vouchers to export.', 'error'); return; }
   const wb = XLSX.utils.book_new();
-  const headers = ['Date Issued','Code','Value (USD)','Customer','Notes','Status','Used Date'];
-  const rows = VOUCHERS.map(v => [v.date, v.code, v.amount, v.customer||'', v.notes||'', v.used?'Redeemed':'Available', v.usedDate||'']);
+  const headers = ['Date Issued','Code','Original Value','Remaining Balance','Customer','Notes','Status'];
+  const rows = VOUCHERS.map(v => {
+    const bal = v.balance !== undefined ? v.balance : (v.used ? 0 : v.amount);
+    const status = v.used ? 'Fully Redeemed' : bal < (v.originalAmount||v.amount) ? 'Partially Used' : 'Available';
+    return [v.date, v.code, v.originalAmount||v.amount, bal, v.customer||'', v.notes||'', status];
+  });
   const ws = XLSX.utils.aoa_to_sheet([['Klay Ceramics — Gift Vouchers'], [], headers, ...rows]);
-  ws['!cols'] = [{wch:12},{wch:18},{wch:12},{wch:20},{wch:25},{wch:12},{wch:12}];
+  ws['!cols'] = [{wch:12},{wch:18},{wch:14},{wch:16},{wch:20},{wch:25},{wch:16}];
   XLSX.utils.book_append_sheet(wb, ws, 'Gift Vouchers');
   XLSX.writeFile(wb, 'KlayCeramics_GiftVouchers.xlsx');
   showAlert('Vouchers exported.');
@@ -3376,6 +3623,7 @@ function bootApp() {
   SNAPSHOTS = load('klay_snapshots') || [];
   FLOAT = load('klay_float') || [];
   VOUCHERS = load('klay_vouchers') || [];
+  VOUCHERS.forEach(v => { if (v.balance === undefined) v.balance = v.used ? 0 : v.amount; if (!v.originalAmount) v.originalAmount = v.amount; });
 
   loadCostInputs();
   renderCostsSummary();
