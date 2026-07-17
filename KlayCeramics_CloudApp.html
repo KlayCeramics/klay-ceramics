@@ -470,6 +470,7 @@
   <div class="month-selector">
     <label style="font-size:0.78rem;color:var(--ash);text-transform:uppercase;letter-spacing:0.06em;">View Month</label>
     <select id="dashMonthSelect" onchange="renderDashboard()"></select>
+    <button class="btn btn-secondary btn-sm" onclick="pushAllToSheets()" title="Push all local data up to Google Sheets">⬆ Upload Local Data</button>
   </div>
 
   <div class="stats-grid" id="dashStats"></div>
