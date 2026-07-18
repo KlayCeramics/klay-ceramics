@@ -1523,27 +1523,77 @@ async function readAllFromSheets() {
   if (!SHEET_ID || !OAUTH_TOKEN) return false;
   setSyncStatus('syncing', 'Loading…');
   try {
+    // Read all new split tabs PLUS the legacy 'Sales' and 'Products' tabs
     const tabKeys = Object.keys(TAB_MAP);
-    const ranges  = tabKeys.map(k => `ranges=${encodeURIComponent(TAB_MAP[k] + '!A1')}`).join('&');
+    const allRanges = [
+      ...tabKeys.map(k => `ranges=${encodeURIComponent(TAB_MAP[k] + '!A1')}`),
+      `ranges=${encodeURIComponent('Sales!A1')}`,       // legacy tab
+      `ranges=${encodeURIComponent('Products!A1')}`,    // legacy tab
+    ].join('&');
+
     const resp = await sheetsRequest(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?${ranges}`
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?${allRanges}`
     );
     const data = await resp.json();
+    const valueRanges = data.valueRanges || [];
     let loaded = 0;
-    (data.valueRanges || []).forEach((vr, i) => {
-      const key = tabKeys[i];
-      const cellVal = vr.values?.[0]?.[0];
+
+    // First pass: load all new split tabs
+    tabKeys.forEach((key, i) => {
+      const cellVal = valueRanges[i]?.values?.[0]?.[0];
       if (cellVal) {
         try {
-          const parsed = JSON.parse(cellVal);
-          _cache[key] = parsed;
+          _cache[key] = JSON.parse(cellVal);
           localStorage.setItem(key, cellVal);
           loaded++;
         } catch(e) { console.warn('Parse error for', key, e); }
       }
     });
 
-    // Reassemble virtual klay_sales from sub-keys
+    // Second pass: read legacy 'Sales' tab (index = tabKeys.length)
+    const legacySalesVal = valueRanges[tabKeys.length]?.values?.[0]?.[0];
+    if (legacySalesVal) {
+      try {
+        const legacySales = JSON.parse(legacySalesVal);
+        // Merge legacy sales into each split key — only add entries not already present
+        const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
+        streams.forEach(s => {
+          const splitKey  = 'klay_sales_' + s;
+          const existing  = _cache[splitKey] || [];
+          const legacy    = legacySales[s]   || [];
+          const existingIds = new Set(existing.map(x => x.id));
+          const toMerge   = legacy.filter(x => !existingIds.has(x.id));
+          if (toMerge.length) {
+            _cache[splitKey] = [...existing, ...toMerge];
+            localStorage.setItem(splitKey, JSON.stringify(_cache[splitKey]));
+            console.log(`Merged ${toMerge.length} legacy ${s} sales from Sales tab`);
+          }
+        });
+        loaded++;
+      } catch(e) { console.warn('Parse error for legacy Sales tab', e); }
+    }
+
+    // Third pass: read legacy 'Products' tab (index = tabKeys.length + 1)
+    const legacyProductsVal = valueRanges[tabKeys.length + 1]?.values?.[0]?.[0];
+    if (legacyProductsVal) {
+      try {
+        const legacyProducts = JSON.parse(legacyProductsVal);
+        ['shop','pp'].forEach(type => {
+          const splitKey = 'klay_products_' + type;
+          const existing = _cache[splitKey] || [];
+          const legacy   = legacyProducts[type] || [];
+          const existingIds = new Set(existing.map(x => x.id));
+          const toMerge  = legacy.filter(x => !existingIds.has(x.id));
+          if (toMerge.length) {
+            _cache[splitKey] = [...existing, ...toMerge];
+            localStorage.setItem(splitKey, JSON.stringify(_cache[splitKey]));
+          }
+        });
+        loaded++;
+      } catch(e) { console.warn('Parse error for legacy Products tab', e); }
+    }
+
+    // Reassemble virtual klay_sales from sub-keys (now includes merged legacy data)
     _cache['klay_sales'] = {
       instore:   _cache['klay_sales_instore']  || [],
       pottery:   _cache['klay_sales_pottery']  || [],
