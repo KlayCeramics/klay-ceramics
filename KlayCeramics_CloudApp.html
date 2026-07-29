@@ -1477,15 +1477,29 @@ async function sheetsRequest(url, options = {}) {
   return resp;
 }
 
+const CHUNK_SIZE = 40000; // stay well under 50k limit
+
+function chunkString(str) {
+  const chunks = [];
+  for (let i = 0; i < str.length; i += CHUNK_SIZE) {
+    chunks.push(str.slice(i, i + CHUNK_SIZE));
+  }
+  return chunks.length ? chunks : [''];
+}
+
 async function writeSheetTab(key, data) {
   const tab = TAB_MAP[key];
   if (!tab || !SHEET_ID || !OAUTH_TOKEN) return false;
+  // Minify JSON to save space
   const json = JSON.stringify(data);
+  const chunks = chunkString(json);
+  // Write all chunks as a single row: A1, B1, C1, ...
+  // Each cell holds one chunk; on read we concatenate A1+B1+C1...
   const range = encodeURIComponent(`${tab}!A1`);
   try {
     await sheetsRequest(
       `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=RAW`,
-      { method: 'PUT', body: JSON.stringify({ values: [[json]] }) }
+      { method: 'PUT', body: JSON.stringify({ values: [chunks] }) }
     );
     return true;
   } catch(e) {
@@ -1525,10 +1539,11 @@ async function readAllFromSheets() {
   try {
     // Read all new split tabs PLUS the legacy 'Sales' and 'Products' tabs
     const tabKeys = Object.keys(TAB_MAP);
+    // Read entire first row (A1:Z1) per tab to support chunked data across multiple cells
     const allRanges = [
-      ...tabKeys.map(k => `ranges=${encodeURIComponent(TAB_MAP[k] + '!A1')}`),
-      `ranges=${encodeURIComponent('Sales!A1')}`,       // legacy tab
-      `ranges=${encodeURIComponent('Products!A1')}`,    // legacy tab
+      ...tabKeys.map(k => `ranges=${encodeURIComponent(TAB_MAP[k] + '!A1:Z1')}`),
+      `ranges=${encodeURIComponent('Sales!A1:Z1')}`,       // legacy tab
+      `ranges=${encodeURIComponent('Products!A1:Z1')}`,    // legacy tab
     ].join('&');
 
     const resp = await sheetsRequest(
@@ -1538,9 +1553,15 @@ async function readAllFromSheets() {
     const valueRanges = data.valueRanges || [];
     let loaded = 0;
 
+    // Helper: reassemble chunked row into JSON string
+    function reassembleRow(vr) {
+      const row = vr?.values?.[0] || [];
+      return row.filter(Boolean).join('');
+    }
+
     // First pass: load all new split tabs
     tabKeys.forEach((key, i) => {
-      const cellVal = valueRanges[i]?.values?.[0]?.[0];
+      const cellVal = reassembleRow(valueRanges[i]);
       if (cellVal) {
         try {
           _cache[key] = JSON.parse(cellVal);
@@ -1551,7 +1572,7 @@ async function readAllFromSheets() {
     });
 
     // Second pass: read legacy 'Sales' tab (index = tabKeys.length)
-    const legacySalesVal = valueRanges[tabKeys.length]?.values?.[0]?.[0];
+    const legacySalesVal = reassembleRow(valueRanges[tabKeys.length]);
     if (legacySalesVal) {
       try {
         const legacySales = JSON.parse(legacySalesVal);
@@ -1574,7 +1595,7 @@ async function readAllFromSheets() {
     }
 
     // Third pass: read legacy 'Products' tab (index = tabKeys.length + 1)
-    const legacyProductsVal = valueRanges[tabKeys.length + 1]?.values?.[0]?.[0];
+    const legacyProductsVal = reassembleRow(valueRanges[tabKeys.length + 1]);
     if (legacyProductsVal) {
       try {
         const legacyProducts = JSON.parse(legacyProductsVal);
