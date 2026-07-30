@@ -1560,14 +1560,42 @@ async function readAllFromSheets() {
     }
 
     // First pass: load all new split tabs
+    // SAFE MERGE: only replace localStorage if Sheets has MORE records
     tabKeys.forEach((key, i) => {
       const cellVal = reassembleRow(valueRanges[i]);
       if (cellVal) {
         try {
-          _cache[key] = JSON.parse(cellVal);
-          localStorage.setItem(key, cellVal);
+          const fromSheet = JSON.parse(cellVal);
+          const fromLocal = (() => { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } })();
+
+          // For array keys (sales streams, expenses, float, vouchers):
+          // merge — add any sheet records not already in localStorage
+          if (Array.isArray(fromSheet) && Array.isArray(fromLocal)) {
+            const localIds = new Set(fromLocal.map(x => x.id));
+            const toAdd = fromSheet.filter(x => !localIds.has(x.id));
+            const merged = toAdd.length ? [...fromLocal, ...toAdd] : fromLocal;
+            _cache[key] = merged;
+            localStorage.setItem(key, JSON.stringify(merged));
+          } else if (Array.isArray(fromSheet) && !fromLocal) {
+            _cache[key] = fromSheet;
+            localStorage.setItem(key, cellVal);
+          } else if (!Array.isArray(fromSheet)) {
+            // Non-array (costs, products sub-keys): use sheet data only if local is missing
+            if (!fromLocal) {
+              _cache[key] = fromSheet;
+              localStorage.setItem(key, cellVal);
+            } else {
+              _cache[key] = fromLocal; // keep local
+            }
+          }
           loaded++;
         } catch(e) { console.warn('Parse error for', key, e); }
+      } else {
+        // Sheet tab empty — load from localStorage instead
+        try {
+          const fromLocal = JSON.parse(localStorage.getItem(key));
+          if (fromLocal !== null) _cache[key] = fromLocal;
+        } catch(e) {}
       }
     });
 
@@ -1580,15 +1608,19 @@ async function readAllFromSheets() {
         const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
         streams.forEach(s => {
           const splitKey  = 'klay_sales_' + s;
-          const existing  = _cache[splitKey] || [];
+          // Always prefer what's in localStorage for sub-keys
+          const localRaw  = localStorage.getItem(splitKey);
+          const fromLocal = localRaw ? (() => { try { return JSON.parse(localRaw); } catch(e){ return []; } })() : [];
+          const fromCache = _cache[splitKey] || [];
+          // Use whichever has more records between cache and local
+          const existing  = fromLocal.length >= fromCache.length ? fromLocal : fromCache;
           const legacy    = legacySales[s]   || [];
           const existingIds = new Set(existing.map(x => x.id));
           const toMerge   = legacy.filter(x => !existingIds.has(x.id));
-          if (toMerge.length) {
-            _cache[splitKey] = [...existing, ...toMerge];
-            localStorage.setItem(splitKey, JSON.stringify(_cache[splitKey]));
-            console.log(`Merged ${toMerge.length} legacy ${s} sales from Sales tab`);
-          }
+          const merged    = toMerge.length ? [...existing, ...toMerge] : existing;
+          _cache[splitKey] = merged;
+          localStorage.setItem(splitKey, JSON.stringify(merged));
+          if (toMerge.length) console.log(`Merged ${toMerge.length} legacy ${s} sales from Sales tab`);
         });
         loaded++;
       } catch(e) { console.warn('Parse error for legacy Sales tab', e); }
@@ -1614,7 +1646,15 @@ async function readAllFromSheets() {
       } catch(e) { console.warn('Parse error for legacy Products tab', e); }
     }
 
-    // Reassemble virtual klay_sales from sub-keys (now includes merged legacy data)
+    // Reassemble virtual klay_sales — merge sheet data with any existing localStorage
+    ['instore','pottery','workshop','wholesale','custom','classes'].forEach(s => {
+      const sk = 'klay_sales_' + s;
+      const fromLocal = (() => { try { return JSON.parse(localStorage.getItem(sk)) || []; } catch(e) { return []; } })();
+      const fromCache = _cache[sk] || [];
+      // Use whichever has more records
+      _cache[sk] = fromCache.length >= fromLocal.length ? fromCache : fromLocal;
+      localStorage.setItem(sk, JSON.stringify(_cache[sk]));
+    });
     _cache['klay_sales'] = {
       instore:   _cache['klay_sales_instore']  || [],
       pottery:   _cache['klay_sales_pottery']  || [],
@@ -1625,7 +1665,14 @@ async function readAllFromSheets() {
     };
     localStorage.setItem('klay_sales', JSON.stringify(_cache['klay_sales']));
 
-    // Reassemble virtual klay_products from sub-keys
+    // Reassemble virtual klay_products
+    ['shop','pp'].forEach(type => {
+      const sk = 'klay_products_' + type;
+      const fromLocal = (() => { try { return JSON.parse(localStorage.getItem(sk)) || []; } catch(e) { return []; } })();
+      const fromCache = _cache[sk] || [];
+      _cache[sk] = fromCache.length >= fromLocal.length ? fromCache : fromLocal;
+      localStorage.setItem(sk, JSON.stringify(_cache[sk]));
+    });
     _cache['klay_products'] = {
       shop: _cache['klay_products_shop'] || [],
       pp:   _cache['klay_products_pp']   || [],
@@ -3728,15 +3775,92 @@ function hideLoadingOverlay() {
 }
 
 function bootApp() {
-  // Re-init state from cache (Sheets data now in _cache)
+  // Always load from localStorage first — this is the source of truth
+  // Pull each sub-key from localStorage into cache
+  Object.keys(TAB_MAP).forEach(key => {
+    if (_cache[key] === undefined) {
+      try {
+        const val = localStorage.getItem(key);
+        if (val) _cache[key] = JSON.parse(val);
+      } catch(e) {}
+    }
+  });
+  // Reassemble virtual keys from sub-keys (prefer cache over empty)
+  _cache['klay_sales'] = {
+    instore:   _cache['klay_sales_instore']  || [],
+    pottery:   _cache['klay_sales_pottery']  || [],
+    workshop:  _cache['klay_sales_workshop'] || [],
+    wholesale: _cache['klay_sales_wholesale']|| [],
+    custom:    _cache['klay_sales_custom']   || [],
+    classes:   _cache['klay_sales_classes']  || [],
+  };
+  _cache['klay_products'] = {
+    shop: _cache['klay_products_shop'] || [],
+    pp:   _cache['klay_products_pp']   || [],
+  };
+  // Also load from old combined localStorage keys if sub-keys are empty
+  const oldSales = (() => { try { return JSON.parse(localStorage.getItem('klay_sales')); } catch(e) { return null; } })();
+  if (oldSales) {
+    ['instore','pottery','workshop','wholesale','custom','classes'].forEach(s => {
+      if (!_cache['klay_sales_' + s]?.length && oldSales[s]?.length) {
+        _cache['klay_sales_' + s] = oldSales[s];
+        _cache['klay_sales'][s] = oldSales[s];
+      }
+    });
+  }
+  const oldProducts = (() => { try { return JSON.parse(localStorage.getItem('klay_products')); } catch(e) { return null; } })();
+  if (oldProducts) {
+    if (!_cache['klay_products_shop']?.length && oldProducts.shop?.length) {
+      _cache['klay_products_shop'] = oldProducts.shop;
+      _cache['klay_products'].shop = oldProducts.shop;
+    }
+    if (!_cache['klay_products_pp']?.length && oldProducts.pp?.length) {
+      _cache['klay_products_pp'] = oldProducts.pp;
+      _cache['klay_products'].pp = oldProducts.pp;
+    }
+  }
+
   COSTS = load('klay_costs') || { clay:0, clayWhite:0, clayTerra:0, plaster:0, bisque:0, glazeFire:0, glazeG:0 };
   if (!COSTS.clayWhite && COSTS.clay) COSTS.clayWhite = COSTS.clay;
   if (!COSTS.clayTerra) COSTS.clayTerra = 0;
 
-  PRODUCTS = load('klay_products') || { shop: [], pp: [] };
-  SALES = load('klay_sales') || { instore:[], pottery:[], workshop:[], wholesale:[], custom:[], classes:[] };
+  // Always rebuild PRODUCTS and SALES from sub-keys (most up to date source)
+  // Sub-keys are updated on every save; the combined key may be stale
+  const _loadSubKey = (key, fallback) => {
+    // Try cache first, then localStorage sub-key, then fallback
+    if (_cache[key] !== undefined && (_cache[key] === null ? false : true)) return _cache[key];
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch(e) { return fallback; }
+  };
+
+  PRODUCTS = {
+    shop: _loadSubKey('klay_products_shop', []),
+    pp:   _loadSubKey('klay_products_pp',   []),
+  };
+  // If sub-keys are empty, fall back to combined products key
+  if (!PRODUCTS.shop.length && !PRODUCTS.pp.length) {
+    const combined = load('klay_products');
+    if (combined) { PRODUCTS.shop = combined.shop || []; PRODUCTS.pp = combined.pp || []; }
+  }
+
+  // Build SALES from sub-keys — always prefer sub-keys over combined
+  const _streams = ['instore','pottery','workshop','wholesale','custom','classes'];
+  SALES = {};
+  let anySubKeyHasData = false;
+  _streams.forEach(s => {
+    const sub = _loadSubKey('klay_sales_' + s, null);
+    SALES[s] = sub || [];
+    if (sub && sub.length) anySubKeyHasData = true;
+  });
+  // If all sub-keys are empty, try the combined klay_sales key (legacy)
+  if (!anySubKeyHasData) {
+    const combined = load('klay_sales');
+    if (combined) {
+      _streams.forEach(s => { SALES[s] = combined[s] || []; });
+    }
+  }
   if (!SALES.custom) SALES.custom = [];
   if (!SALES.classes) SALES.classes = [];
+
   EXPENSES = load('klay_expenses') || [];
   SNAPSHOTS = load('klay_snapshots') || [];
   FLOAT = load('klay_float') || [];
@@ -3784,8 +3908,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('setupOverlay').style.display = 'flex';
   }
 
-  // Boot with localStorage data so UI is usable while signing in
+  // Always boot immediately from localStorage — show data right away
   bootApp();
+  // If already configured, also try to background-sync with Sheets
+  // but don't block the UI or overwrite good local data
 });
 
 function reconnectGoogle() {
