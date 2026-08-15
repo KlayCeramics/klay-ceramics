@@ -3824,47 +3824,62 @@ function bootApp() {
   if (!COSTS.clayWhite && COSTS.clay) COSTS.clayWhite = COSTS.clay;
   if (!COSTS.clayTerra) COSTS.clayTerra = 0;
 
-  // Always rebuild PRODUCTS and SALES from sub-keys (most up to date source)
-  // Sub-keys are updated on every save; the combined key may be stale
-  const _loadSubKey = (key, fallback) => {
-    // Try cache first, then localStorage sub-key, then fallback
-    if (_cache[key] !== undefined && (_cache[key] === null ? false : true)) return _cache[key];
-    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch(e) { return fallback; }
+  // Always read sub-keys DIRECTLY from localStorage — never from _cache
+  // _cache may contain empty arrays written by readAllFromSheets before bootApp runs
+  const _readLocal = (key) => {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch(e) { return null; }
   };
 
-  PRODUCTS = {
-    shop: _loadSubKey('klay_products_shop', []),
-    pp:   _loadSubKey('klay_products_pp',   []),
-  };
-  // If sub-keys are empty, fall back to combined products key
-  if (!PRODUCTS.shop.length && !PRODUCTS.pp.length) {
-    const combined = load('klay_products');
-    if (combined) { PRODUCTS.shop = combined.shop || []; PRODUCTS.pp = combined.pp || []; }
+  // Rebuild PRODUCTS from localStorage sub-keys
+  const shopProds = _readLocal('klay_products_shop');
+  const ppProds   = _readLocal('klay_products_pp');
+  if (shopProds !== null || ppProds !== null) {
+    PRODUCTS = { shop: shopProds || [], pp: ppProds || [] };
+  } else {
+    PRODUCTS = _readLocal('klay_products') || { shop: [], pp: [] };
   }
+  // Sync cache
+  _cache['klay_products_shop'] = PRODUCTS.shop;
+  _cache['klay_products_pp']   = PRODUCTS.pp;
+  _cache['klay_products']      = PRODUCTS;
 
-  // Build SALES from sub-keys — always prefer sub-keys over combined
+  // Rebuild SALES from localStorage sub-keys
   const _streams = ['instore','pottery','workshop','wholesale','custom','classes'];
-  SALES = {};
-  let anySubKeyHasData = false;
+  const subSales = {};
+  let anyHasData = false;
   _streams.forEach(s => {
-    const sub = _loadSubKey('klay_sales_' + s, null);
-    SALES[s] = sub || [];
-    if (sub && sub.length) anySubKeyHasData = true;
+    const v = _readLocal('klay_sales_' + s);
+    subSales[s] = v || [];
+    if (v && v.length > 0) anyHasData = true;
   });
-  // If all sub-keys are empty, try the combined klay_sales key (legacy)
-  if (!anySubKeyHasData) {
-    const combined = load('klay_sales');
+
+  if (anyHasData) {
+    SALES = subSales;
+  } else {
+    // Fall back to combined key (legacy)
+    const combined = _readLocal('klay_sales');
     if (combined) {
-      _streams.forEach(s => { SALES[s] = combined[s] || []; });
+      SALES = combined;
+      // Populate sub-keys from combined so future saves work correctly
+      _streams.forEach(s => {
+        const arr = combined[s] || [];
+        _cache['klay_sales_' + s] = arr;
+        try { localStorage.setItem('klay_sales_' + s, JSON.stringify(arr)); } catch(e) {}
+      });
+    } else {
+      SALES = { instore:[], pottery:[], workshop:[], wholesale:[], custom:[], classes:[] };
     }
   }
-  if (!SALES.custom) SALES.custom = [];
+  if (!SALES.custom)  SALES.custom  = [];
   if (!SALES.classes) SALES.classes = [];
+  // Sync cache with what we loaded
+  _streams.forEach(s => { _cache['klay_sales_' + s] = SALES[s]; });
+  _cache['klay_sales'] = SALES;
 
-  EXPENSES = load('klay_expenses') || [];
-  SNAPSHOTS = load('klay_snapshots') || [];
-  FLOAT = load('klay_float') || [];
-  VOUCHERS = load('klay_vouchers') || [];
+  EXPENSES  = _readLocal('klay_expenses')  || [];
+  SNAPSHOTS = _readLocal('klay_snapshots') || [];
+  FLOAT     = _readLocal('klay_float')     || [];
+  VOUCHERS  = _readLocal('klay_vouchers')  || [];
   VOUCHERS.forEach(v => { if (v.balance === undefined) v.balance = v.used ? 0 : v.amount; if (!v.originalAmount) v.originalAmount = v.amount; });
 
   loadCostInputs();
