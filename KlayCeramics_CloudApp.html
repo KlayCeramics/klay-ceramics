@@ -472,6 +472,7 @@
     <select id="dashMonthSelect" onchange="renderDashboard()"></select>
     <button class="btn btn-secondary btn-sm" onclick="pushAllToSheets()" title="Push all local data up to Google Sheets">⬆ Upload Local Data</button>
     <button class="btn btn-ghost btn-sm" onclick="reloadFromSheets()" title="Pull latest data from Google Sheets">↓ Reload from Sheets</button>
+    <button class="btn btn-ghost btn-sm" onclick="forceLoadLocal()" title="Force load all data from this browser's storage" style="border-color:var(--clay);color:var(--clay-dark);">🔄 Force Load Browser Data</button>
   </div>
 
   <div class="stats-grid" id="dashStats"></div>
@@ -1560,42 +1561,41 @@ async function readAllFromSheets() {
     }
 
     // First pass: load all new split tabs
-    // SAFE MERGE: only replace localStorage if Sheets has MORE records
+    // On ANY parse error, fall back to localStorage — never corrupt the cache
     tabKeys.forEach((key, i) => {
       const cellVal = reassembleRow(valueRanges[i]);
-      if (cellVal) {
-        try {
-          const fromSheet = JSON.parse(cellVal);
-          const fromLocal = (() => { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } })();
 
-          // For array keys (sales streams, expenses, float, vouchers):
-          // merge — add any sheet records not already in localStorage
-          if (Array.isArray(fromSheet) && Array.isArray(fromLocal)) {
-            const localIds = new Set(fromLocal.map(x => x.id));
-            const toAdd = fromSheet.filter(x => !localIds.has(x.id));
-            const merged = toAdd.length ? [...fromLocal, ...toAdd] : fromLocal;
-            _cache[key] = merged;
-            localStorage.setItem(key, JSON.stringify(merged));
-          } else if (Array.isArray(fromSheet) && !fromLocal) {
-            _cache[key] = fromSheet;
-            localStorage.setItem(key, cellVal);
-          } else if (!Array.isArray(fromSheet)) {
-            // Non-array (costs, products sub-keys): use sheet data only if local is missing
-            if (!fromLocal) {
-              _cache[key] = fromSheet;
-              localStorage.setItem(key, cellVal);
-            } else {
-              _cache[key] = fromLocal; // keep local
-            }
-          }
-          loaded++;
-        } catch(e) { console.warn('Parse error for', key, e); }
+      // Always load localStorage version first as baseline
+      let fromLocal = null;
+      try { const raw = localStorage.getItem(key); if (raw) fromLocal = JSON.parse(raw); } catch(e) {}
+
+      if (cellVal) {
+        let fromSheet = null;
+        try { fromSheet = JSON.parse(cellVal); } catch(e) {
+          // Sheet data is corrupt/truncated — keep localStorage, mark dirty to re-upload
+          console.warn(`Corrupt sheet data for ${key} — keeping localStorage version`);
+          if (fromLocal !== null) { _cache[key] = fromLocal; _dirty[key] = true; }
+          return; // skip to next key
+        }
+
+        // Both parsed OK — merge arrays, prefer local for non-arrays
+        if (Array.isArray(fromSheet) && Array.isArray(fromLocal)) {
+          const localIds = new Set(fromLocal.map(x => x.id));
+          const toAdd = fromSheet.filter(x => !localIds.has(x.id));
+          const merged = toAdd.length ? [...fromLocal, ...toAdd] : fromLocal;
+          _cache[key] = merged;
+          localStorage.setItem(key, JSON.stringify(merged));
+        } else if (Array.isArray(fromSheet) && !fromLocal) {
+          _cache[key] = fromSheet;
+          localStorage.setItem(key, JSON.stringify(fromSheet));
+        } else {
+          // Non-array (costs, products): keep local if it exists
+          _cache[key] = fromLocal !== null ? fromLocal : fromSheet;
+        }
+        loaded++;
       } else {
-        // Sheet tab empty — load from localStorage instead
-        try {
-          const fromLocal = JSON.parse(localStorage.getItem(key));
-          if (fromLocal !== null) _cache[key] = fromLocal;
-        } catch(e) {}
+        // Sheet tab empty — use localStorage
+        if (fromLocal !== null) { _cache[key] = fromLocal; _dirty[key] = true; }
       }
     });
 
@@ -3774,6 +3774,86 @@ function hideLoadingOverlay() {
   if (el) el.style.display = 'none';
 }
 
+
+// ══════════════════════════════════════════
+//  EMERGENCY: FORCE LOAD FROM BROWSER STORAGE
+// ══════════════════════════════════════════
+function forceLoadLocal() {
+  // Completely ignore cache and Sheets — read raw localStorage only
+  const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
+
+  // Try sub-keys first
+  let anyFound = false;
+  const rebuilt = {};
+  streams.forEach(s => {
+    const raw = localStorage.getItem('klay_sales_' + s);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        rebuilt[s] = parsed;
+        if (parsed.length) anyFound = true;
+        console.log('forceLoad: klay_sales_' + s + ' =', parsed.length, 'records');
+      } catch(e) { rebuilt[s] = []; }
+    } else { rebuilt[s] = []; }
+  });
+
+  // If sub-keys had nothing, try combined key
+  if (!anyFound) {
+    const raw = localStorage.getItem('klay_sales');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        streams.forEach(s => { rebuilt[s] = parsed[s] || []; });
+        anyFound = true;
+        console.log('forceLoad: using combined klay_sales key');
+      } catch(e) {}
+    }
+  }
+
+  // Force into SALES global
+  SALES = rebuilt;
+  if (!SALES.custom) SALES.custom = [];
+  if (!SALES.classes) SALES.classes = [];
+
+  // Also reload products
+  const rawShop = localStorage.getItem('klay_products_shop');
+  const rawPP   = localStorage.getItem('klay_products_pp');
+  const rawProd = localStorage.getItem('klay_products');
+  if (rawShop || rawPP) {
+    PRODUCTS = {
+      shop: rawShop ? JSON.parse(rawShop) : [],
+      pp:   rawPP   ? JSON.parse(rawPP)   : [],
+    };
+  } else if (rawProd) {
+    PRODUCTS = JSON.parse(rawProd);
+  }
+
+  // Reload expenses, float, vouchers
+  try { EXPENSES  = JSON.parse(localStorage.getItem('klay_expenses')  || '[]'); } catch(e){ EXPENSES=[]; }
+  try { FLOAT     = JSON.parse(localStorage.getItem('klay_float')     || '[]'); } catch(e){ FLOAT=[]; }
+  try { VOUCHERS  = JSON.parse(localStorage.getItem('klay_vouchers')  || '[]'); } catch(e){ VOUCHERS=[]; }
+  try { COSTS     = JSON.parse(localStorage.getItem('klay_costs')     || '{}'); } catch(e){}
+
+  // Re-render everything
+  loadCostInputs();
+  renderCostsSummary();
+  renderDashboard();
+  populateSalesDropdowns();
+  renderAllSalesLogs();
+  renderCatalogue('shop');
+  renderCatalogue('pp');
+  ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); });
+  renderStock();
+  renderFloat();
+  renderVoucherLog();
+  populateVoucherDropdowns();
+  calcQuote();
+
+  const total = streams.reduce((n,s) => n + (SALES[s]?.length||0), 0);
+  showAlert('✓ Force loaded ' + total + ' sales records from browser storage.');
+  console.log('forceLoad complete. SALES:', streams.map(s=>s+':'+SALES[s]?.length).join(', '));
+}
+
 function bootApp() {
   // Always load from localStorage first — this is the source of truth
   // Pull each sub-key from localStorage into cache
@@ -3943,21 +4023,19 @@ function reconnectGoogle() {
       if (resp.error) { showAlert('Sign-in failed: ' + resp.error, 'error'); return; }
       OAUTH_TOKEN = resp.access_token;
       document.getElementById('reconnectBar').style.display = 'none';
-      showLoadingOverlay('Loading your data from Google Sheets…');
+      // Boot from localStorage immediately so data shows right away
+      bootApp();
+      // Then sync with Sheets in background (safe — corrupt sheet data falls back to localStorage)
+      showLoadingOverlay('Syncing with Google Sheets…');
       await ensureSheetTabs();
       const ok = await readAllFromSheets();
       hideLoadingOverlay();
-      const hasSheetData = Object.keys(TAB_MAP).some(k => _cache[k] !== undefined);
-      const hasLocalData = Object.keys(TAB_MAP).some(k => localStorage.getItem(k));
-      if (ok && !hasSheetData && hasLocalData) {
-        document.getElementById('reconnectBar').style.display = 'flex';
-        document.getElementById('uploadLocalBtn').style.display = 'inline-flex';
-        showAlert('Signed in! Sheet is empty — click "Upload Local Data" to sync your data up.', 'error');
-      } else if (ok) {
-        showAlert('✓ Connected and data loaded!');
-        bootApp();
+      if (ok) {
+        bootApp(); // re-render with any newly merged data
+        showAlert('✓ Connected and data synced!');
       } else {
-        showAlert('Signed in but could not read Sheet. Check your Sheet ID.', 'error');
+        showAlert('Signed in but could not read Sheet — showing local data.', 'error');
+      }
         bootApp();
       }
     },
