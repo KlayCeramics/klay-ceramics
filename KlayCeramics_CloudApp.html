@@ -473,6 +473,7 @@
     <button class="btn btn-secondary btn-sm" onclick="pushAllToSheets()" title="Push all local data up to Google Sheets">⬆ Upload Local Data</button>
     <button class="btn btn-ghost btn-sm" onclick="reloadFromSheets()" title="Pull latest data from Google Sheets">↓ Reload from Sheets</button>
     <button class="btn btn-ghost btn-sm" onclick="repairHistoricalData()" title="Recover any older sales still sitting in the legacy Sales tab and save them permanently into the new split tabs" style="border-color:var(--glaze-blue);color:var(--glaze-blue);">🩹 Repair Historical Data</button>
+    <button class="btn btn-ghost btn-sm" onclick="diagnoseSheetData()" title="Show exactly what's really stored in each Sheet tab" style="border-color:var(--bisque);color:var(--clay-dark);">🔍 Diagnose Sheet Data</button>
     <button class="btn btn-ghost btn-sm" onclick="forceLoadLocal()" title="Force load all data from this browser's storage" style="border-color:var(--clay);color:var(--clay-dark);">🔄 Force Load Browser Data</button>
   </div>
 
@@ -4205,6 +4206,97 @@ async function repairHistoricalData() {
   } else {
     showAlert(`No additional historical records found. You have ${afterTotal} sales total (${streams.map(s=>s+':'+after[s]).join(', ')}).`);
   }
+}
+
+// ══════════════════════════════════════════
+//  DIAGNOSE SHEET DATA
+//  Reads the RAW contents of every relevant tab (all split tabs + the
+//  legacy Sales/Products tabs) and reports, per tab: whether it's empty,
+//  whether row 1 is a JSON blob (and how many records that JSON contains),
+//  or whether it looks like a classic row-per-record tabular sheet instead.
+//  This exists because "the recovery found nothing" can mean either
+//  "there's genuinely nothing to recover" or "the legacy tab isn't in the
+//  format the recovery code expects" — and those need very different fixes.
+//  Reading rows 1–50 (not just row 1) so a tabular (non-JSON-blob) legacy
+//  format is also detected instead of silently mismatched.
+// ══════════════════════════════════════════
+async function diagnoseSheetData() {
+  if (!SHEET_ID || !OAUTH_TOKEN) {
+    showAlert('Not signed in to Google. Click Sign In first.', 'error');
+    document.getElementById('reconnectBar').style.display = 'flex';
+    return;
+  }
+  showLoadingOverlay('Reading raw Sheet contents for diagnosis…');
+  try {
+    const tabsToCheck = [...Object.values(TAB_MAP), 'Sales', 'Products'];
+    const ranges = tabsToCheck
+      .map(t => `ranges=${encodeURIComponent(t + '!A1:' + CHUNK_READ_RANGE_END + '50')}`)
+      .join('&');
+    const resp = await sheetsRequest(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?${ranges}`
+    );
+    const data = await resp.json();
+    const vrs = data.valueRanges || [];
+    const lines = [];
+
+    tabsToCheck.forEach((tab, i) => {
+      const rows = vrs[i]?.values || [];
+      const rowCount = rows.length;
+      const row1 = rows[0] || [];
+      const row1Joined = row1.filter(Boolean).join('');
+
+      let verdict;
+      if (!rowCount) {
+        verdict = 'EMPTY — no data found in this tab at all.';
+      } else if (row1Joined) {
+        try {
+          const parsed = JSON.parse(row1Joined);
+          if (Array.isArray(parsed)) {
+            verdict = `JSON array in row 1 — ${parsed.length} record(s). (${row1Joined.length} chars across ${row1.length} cell(s))`;
+          } else if (parsed && typeof parsed === 'object') {
+            const summary = Object.keys(parsed)
+              .map(k => `${k}:${Array.isArray(parsed[k]) ? parsed[k].length + ' records' : typeof parsed[k]}`)
+              .join(', ');
+            verdict = `JSON object in row 1 — {${summary}}. (${row1Joined.length} chars across ${row1.length} cell(s))`;
+          } else {
+            verdict = `Row 1 is valid JSON but not an array/object (type: ${typeof parsed}).`;
+          }
+        } catch (e) {
+          const headerPreview = row1.slice(0, 6).join(' | ');
+          verdict = `Row 1 is NOT valid JSON (${e.message.slice(0, 60)}). Row 1 content looks like: "${headerPreview}". Sheet has ${rowCount} row(s) of data total — this may be a classic one-row-per-sale tabular format instead of a JSON blob.`;
+        }
+      } else {
+        verdict = `Row 1 is empty, but the tab has ${rowCount} row(s) of data starting elsewhere — likely a tabular (non-JSON) format.`;
+      }
+      lines.push(`▸ ${tab}\n  ${verdict}`);
+    });
+
+    hideLoadingOverlay();
+    showDiagnosticModal(lines.join('\n\n'));
+  } catch (e) {
+    hideLoadingOverlay();
+    showAlert('Diagnosis failed: ' + e.message.slice(0, 80), 'error');
+  }
+}
+
+function showDiagnosticModal(text) {
+  let el = document.getElementById('diagModal');
+  if (el) el.remove();
+  el = document.createElement('div');
+  el.id = 'diagModal';
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(61,46,37,0.85);z-index:9500;display:flex;align-items:center;justify-content:center;padding:2rem;';
+  el.innerHTML = `
+    <div style="background:#fff;border-radius:var(--radius);max-width:700px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);">
+      <div style="padding:1.2rem 1.5rem;border-bottom:1px solid var(--sand-dark);display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--smoke);">Sheet Diagnosis</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('diagModal').remove()">Close</button>
+      </div>
+      <div style="padding:1.5rem;overflow-y:auto;">
+        <textarea readonly style="width:100%;height:340px;font-family:monospace;font-size:0.76rem;border:1px solid var(--sand-dark);border-radius:6px;padding:0.8rem;box-sizing:border-box;">${text.replace(/</g,'&lt;')}</textarea>
+        <p style="font-size:0.8rem;color:var(--ash);margin-top:0.8rem;">Copy this text and share it back — it shows exactly what format your historical data is in, so the right fix can be made.</p>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
 }
 
 // ══════════════════════════════════════════
