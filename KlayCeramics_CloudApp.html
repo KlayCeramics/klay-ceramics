@@ -472,6 +472,7 @@
     <select id="dashMonthSelect" onchange="renderDashboard()"></select>
     <button class="btn btn-secondary btn-sm" onclick="pushAllToSheets()" title="Push all local data up to Google Sheets">⬆ Upload Local Data</button>
     <button class="btn btn-ghost btn-sm" onclick="reloadFromSheets()" title="Pull latest data from Google Sheets">↓ Reload from Sheets</button>
+    <button class="btn btn-ghost btn-sm" onclick="repairHistoricalData()" title="Recover any older sales still sitting in the legacy Sales tab and save them permanently into the new split tabs" style="border-color:var(--glaze-blue);color:var(--glaze-blue);">🩹 Repair Historical Data</button>
     <button class="btn btn-ghost btn-sm" onclick="forceLoadLocal()" title="Force load all data from this browser's storage" style="border-color:var(--clay);color:var(--clay-dark);">🔄 Force Load Browser Data</button>
   </div>
 
@@ -1390,6 +1391,8 @@ let _cache = {};
 let _dirty = {};
 let _syncTimer = null;
 let _syncErrors = 0;
+let _tokenRefreshTimer = null;
+let _reauthing = null; // in-flight silent reauth promise, so parallel 401s share one attempt
 
 // TAB_MAP: maps localStorage key → Sheet tab name
 // klay_sales is split into sub-keys, one per stream, to stay under 50k char cell limit
@@ -1456,7 +1459,51 @@ function save(key, data) {
   _syncTimer = setTimeout(flushToSheets, 1500);
 }
 
-async function sheetsRequest(url, options = {}) {
+// ══════════════════════════════════════════
+//  TOKEN LIFECYCLE — Google OAuth access tokens expire (~1hr).
+//  Without proactive refresh, sync silently stops working mid-session
+//  while localStorage keeps accumulating data — this is the #1 cause
+//  of "the Sheet is missing everything after a certain date".
+// ══════════════════════════════════════════
+function scheduleTokenRefresh(expiresInSeconds) {
+  if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer);
+  const secs = Number(expiresInSeconds) || 3600;
+  // Refresh 5 minutes before expiry (never less than 30s out, in case of a short-lived token)
+  const refreshInMs = Math.max((secs - 300) * 1000, 30000);
+  _tokenRefreshTimer = setTimeout(() => { silentReauth(); }, refreshInMs);
+}
+
+// Attempts a silent (no popup) token renewal using the existing tokenClient.
+// Works as long as the user has an active Google session in this browser and
+// already granted the scope once. Returns a Promise<boolean>.
+function silentReauth() {
+  if (_reauthing) return _reauthing; // de-dupe concurrent callers
+  _reauthing = new Promise((resolve) => {
+    if (!tokenClient) { resolve(false); return; }
+    const prevCallback = tokenClient.callback;
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      tokenClient.callback = prevCallback; // restore original flow callback
+      resolve(ok);
+    };
+    tokenClient.callback = (r) => {
+      if (r && r.error) { finish(false); return; }
+      OAUTH_TOKEN = r.access_token;
+      scheduleTokenRefresh(r.expires_in);
+      finish(true);
+    };
+    try {
+      tokenClient.requestAccessToken({ prompt: '' });
+      // Safety timeout in case the callback never fires
+      setTimeout(() => finish(false), 8000);
+    } catch (e) { finish(false); }
+  }).finally(() => { _reauthing = null; });
+  return _reauthing;
+}
+
+async function sheetsRequest(url, options = {}, _retried = false) {
   // Always use OAuth token for auth — never mix with API key in auth header
   const headers = {
     'Authorization': `Bearer ${OAUTH_TOKEN}`,
@@ -1465,7 +1512,13 @@ async function sheetsRequest(url, options = {}) {
   };
   const resp = await fetch(url, { ...options, headers });
   if (resp.status === 401) {
-    // Token expired — clear it so reconnect bar shows
+    // Token expired mid-session — try ONE silent renewal before giving up.
+    // This is what keeps a long studio session syncing past the ~1hr token lifetime.
+    if (!_retried) {
+      const renewed = await silentReauth();
+      if (renewed) return sheetsRequest(url, options, true);
+    }
+    // Silent renewal failed (e.g. Google session also expired) — need interactive sign-in
     OAUTH_TOKEN = null;
     setSyncStatus('error', 'Signed out — click Sign In');
     document.getElementById('reconnectBar').style.display = 'flex';
@@ -1488,12 +1541,41 @@ function chunkString(str) {
   return chunks.length ? chunks : [''];
 }
 
+// ══════════════════════════════════════════
+//  CHUNK COLUMN HEADROOM
+//  Each tab's JSON is split across cells in row 1 (A1, B1, C1, ...) so no
+//  single cell ever approaches Sheets' 50,000-char limit. Reads used to be
+//  hard-capped at column Z (26 cols × 40,000 chars ≈ 1.04M chars/tab) — once
+//  a tab's data grew past that, extra chunks were written fine but silently
+//  never read back, which is how history quietly went missing. Reading is
+//  now widened to 300 columns (~12M chars/tab, generous headroom) using a
+//  proper column-letter converter so it works correctly past Z/AA/AZ.
+// ══════════════════════════════════════════
+function colLetter(n) {
+  // 1-indexed column number -> A1-notation column letters (A, B, ... Z, AA, AB, ...)
+  let s = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+const CHUNK_READ_COLUMNS = 300; // generous headroom for years of future growth
+const CHUNK_READ_RANGE_END = colLetter(CHUNK_READ_COLUMNS);
+
 async function writeSheetTab(key, data) {
   const tab = TAB_MAP[key];
   if (!tab || !SHEET_ID || !OAUTH_TOKEN) return false;
   // Minify JSON to save space
   const json = JSON.stringify(data);
   const chunks = chunkString(json);
+  if (chunks.length > CHUNK_READ_COLUMNS) {
+    // Extremely unlikely (would mean >12M characters of JSON), but if it ever
+    // happens we want a loud, visible failure — not a silently truncated read.
+    console.error(`writeSheetTab: ${key} needs ${chunks.length} chunks, exceeding the ${CHUNK_READ_COLUMNS}-column read headroom. Data will be written but may not read back fully — raise CHUNK_READ_COLUMNS.`);
+    showAlert(`⚠ ${tab} data has grown very large (${chunks.length} chunks). Please let your developer know so the storage headroom can be increased.`, 'error');
+  }
   // Write all chunks as a single row: A1, B1, C1, ...
   // Each cell holds one chunk; on read we concatenate A1+B1+C1...
   const range = encodeURIComponent(`${tab}!A1`);
@@ -1526,11 +1608,22 @@ async function flushToSheets() {
     setSyncStatus('ok', 'Synced');
   } else {
     _syncErrors++;
-    setSyncStatus('error', 'Save failed — check connection');
-    if (_syncErrors < 3) {
-      keys.forEach(k => _dirty[k] = true);
-      setTimeout(flushToSheets, 5000);
+    // IMPORTANT: never stop retrying and never drop the dirty flag on failure —
+    // giving up after a few tries is what previously let the Sheet silently fall
+    // behind localStorage for good. Keep marking these keys dirty and keep trying,
+    // with a backoff that caps out instead of growing forever.
+    keys.forEach(k => _dirty[k] = true);
+    const backoffMs = Math.min(5000 * _syncErrors, 60000);
+    if (_syncErrors <= 2) {
+      setSyncStatus('error', 'Save failed — retrying…');
+    } else {
+      // Sustained failure — make this hard to miss instead of a quiet icon.
+      setSyncStatus('error', `Not syncing to cloud (${_syncErrors} tries) — check Sign In`);
+      if (_syncErrors === 3 || _syncErrors % 10 === 0) {
+        showAlert('⚠ Your data is saving on this device but NOT reaching Google Sheets. Click Sign In to reconnect.', 'error');
+      }
     }
+    setTimeout(flushToSheets, backoffMs);
   }
 }
 
@@ -1540,11 +1633,12 @@ async function readAllFromSheets() {
   try {
     // Read all new split tabs PLUS the legacy 'Sales' and 'Products' tabs
     const tabKeys = Object.keys(TAB_MAP);
-    // Read entire first row (A1:Z1) per tab to support chunked data across multiple cells
+    // Read a wide swath of columns per tab so chunked data can never be
+    // silently truncated as it grows — see CHUNK_READ_RANGE_END above.
     const allRanges = [
-      ...tabKeys.map(k => `ranges=${encodeURIComponent(TAB_MAP[k] + '!A1:Z1')}`),
-      `ranges=${encodeURIComponent('Sales!A1:Z1')}`,       // legacy tab
-      `ranges=${encodeURIComponent('Products!A1:Z1')}`,    // legacy tab
+      ...tabKeys.map(k => `ranges=${encodeURIComponent(TAB_MAP[k] + '!A1:' + CHUNK_READ_RANGE_END + '1')}`),
+      `ranges=${encodeURIComponent('Sales!A1:' + CHUNK_READ_RANGE_END + '1')}`,       // legacy tab
+      `ranges=${encodeURIComponent('Products!A1:' + CHUNK_READ_RANGE_END + '1')}`,    // legacy tab
     ].join('&');
 
     const resp = await sheetsRequest(
@@ -1553,6 +1647,7 @@ async function readAllFromSheets() {
     const data = await resp.json();
     const valueRanges = data.valueRanges || [];
     let loaded = 0;
+    let recoveredCount = 0; // how many historical records got pulled back in this pass
 
     // Helper: reassemble chunked row into JSON string
     function reassembleRow(vr) {
@@ -1620,7 +1715,17 @@ async function readAllFromSheets() {
           const merged    = toMerge.length ? [...existing, ...toMerge] : existing;
           _cache[splitKey] = merged;
           localStorage.setItem(splitKey, JSON.stringify(merged));
-          if (toMerge.length) console.log(`Merged ${toMerge.length} legacy ${s} sales from Sales tab`);
+          if (toMerge.length) {
+            console.log(`Merged ${toMerge.length} legacy ${s} sales from Sales tab`);
+            recoveredCount += toMerge.length;
+            // CRITICAL FIX: recovered legacy records were previously only ever
+            // written to localStorage on whichever device happened to run this
+            // merge — never back to the Sheet's split tab. Mark dirty so the
+            // reconstructed full history gets permanently persisted to the
+            // cloud on the very next flush, instead of being silently
+            // re-derived (or lost) every session.
+            _dirty[splitKey] = true;
+          }
         });
         loaded++;
       } catch(e) { console.warn('Parse error for legacy Sales tab', e); }
@@ -1640,6 +1745,8 @@ async function readAllFromSheets() {
           if (toMerge.length) {
             _cache[splitKey] = [...existing, ...toMerge];
             localStorage.setItem(splitKey, JSON.stringify(_cache[splitKey]));
+            recoveredCount += toMerge.length;
+            _dirty[splitKey] = true; // same fix as above, for products
           }
         });
         loaded++;
@@ -1678,6 +1785,14 @@ async function readAllFromSheets() {
       pp:   _cache['klay_products_pp']   || [],
     };
     localStorage.setItem('klay_products', JSON.stringify(_cache['klay_products']));
+
+    // If we just recovered any legacy records, push the now-complete split
+    // tabs back to the Sheet right away instead of waiting on the debounce —
+    // this is what actually makes the repair permanent.
+    if (recoveredCount > 0) {
+      console.log(`readAllFromSheets: recovered ${recoveredCount} historical record(s) from legacy tabs — persisting to split tabs now`);
+      await flushToSheets();
+    }
 
     setSyncStatus('ok', `Loaded (${loaded} data sets)`);
     return true;
@@ -1851,7 +1966,9 @@ function showAlert(msg, type='success') {
   el.textContent = msg;
   document.body.appendChild(el);
   el.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;min-width:240px;box-shadow:var(--shadow-lg)';
-  setTimeout(() => el.remove(), 3000);
+  // Errors stay on screen much longer than success toasts — a sync failure
+  // should not be something that's easy to miss and forget about.
+  setTimeout(() => el.remove(), type === 'error' ? 10000 : 3000);
 }
 
 // ══════════════════════════════════════════
@@ -3687,6 +3804,7 @@ function initGoogleAuth() {
       }
       OAUTH_TOKEN = resp.access_token;
       localStorage.setItem('klay_oauth_token', OAUTH_TOKEN);
+      scheduleTokenRefresh(resp.expires_in);
       document.getElementById('setupOverlay').style.display = 'none';
       document.getElementById('signinBtn')?.setAttribute('disabled', true);
       showLoadingOverlay('Connecting to Google Sheets…');
@@ -3732,6 +3850,7 @@ function requestGoogleToken() {
     callback: async (resp) => {
       if (resp.error) { showAlert('Sign-in failed: ' + resp.error, 'error'); return; }
       OAUTH_TOKEN = resp.access_token;
+      scheduleTokenRefresh(resp.expires_in);
       document.getElementById('setupOverlay').style.display = 'none';
       showLoadingOverlay('Setting up your Google Sheet…');
       await ensureSheetTabs();
@@ -4022,6 +4141,7 @@ function reconnectGoogle() {
     callback: async (resp) => {
       if (resp.error) { showAlert('Sign-in failed: ' + resp.error, 'error'); return; }
       OAUTH_TOKEN = resp.access_token;
+      scheduleTokenRefresh(resp.expires_in);
       document.getElementById('reconnectBar').style.display = 'none';
       // Boot from localStorage immediately so data shows right away
       bootApp();
@@ -4044,6 +4164,69 @@ function reconnectGoogle() {
 function openSetup() {
   document.getElementById('setupOverlay').style.display = 'flex';
 }
+
+// ══════════════════════════════════════════
+//  REPAIR HISTORICAL DATA
+//  Explicit, visible re-run of the legacy-tab recovery + permanent write-back
+//  (see the fix inside readAllFromSheets). Shows exactly what was found so
+//  it's not a silent, unverifiable background operation.
+// ══════════════════════════════════════════
+async function repairHistoricalData() {
+  if (!SHEET_ID || !OAUTH_TOKEN) {
+    showAlert('Not signed in to Google. Click Sign In first.', 'error');
+    document.getElementById('reconnectBar').style.display = 'flex';
+    return;
+  }
+  const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
+  const before = {};
+  streams.forEach(s => { before[s] = (SALES[s]||[]).length; });
+  const beforeTotal = Object.values(before).reduce((a,b)=>a+b,0);
+
+  showLoadingOverlay('Checking legacy tabs for historical sales…');
+  const ok = await readAllFromSheets();
+  hideLoadingOverlay();
+
+  if (!ok) {
+    showAlert('Could not reach Google Sheets — check your connection and try again.', 'error');
+    return;
+  }
+
+  bootApp();
+
+  const after = {};
+  streams.forEach(s => { after[s] = (SALES[s]||[]).length; });
+  const afterTotal = Object.values(after).reduce((a,b)=>a+b,0);
+  const recovered = afterTotal - beforeTotal;
+
+  if (recovered > 0) {
+    const details = streams.filter(s => after[s] > before[s])
+      .map(s => `${s} +${after[s]-before[s]}`).join(', ');
+    showAlert(`✓ Recovered ${recovered} historical sale record(s) (${details}) — now saved permanently to the Sheet.`);
+  } else {
+    showAlert(`No additional historical records found. You have ${afterTotal} sales total (${streams.map(s=>s+':'+after[s]).join(', ')}).`);
+  }
+}
+
+// ══════════════════════════════════════════
+//  SAFETY NET — don't let a backgrounded/closed tab silently drop
+//  a pending 1.5s debounced save. localStorage is already safe by
+//  this point (save() writes it synchronously); this only protects
+//  the Google Sheets copy from falling behind.
+// ══════════════════════════════════════════
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && Object.keys(_dirty).length && SHEET_ID && OAUTH_TOKEN) {
+    if (_syncTimer) { clearTimeout(_syncTimer); _syncTimer = null; }
+    flushToSheets();
+  }
+});
+
+window.addEventListener('beforeunload', (e) => {
+  if (Object.keys(_dirty).length) {
+    e.preventDefault();
+    e.returnValue = 'Some changes have not finished syncing to Google Sheets yet.';
+    return e.returnValue;
+  }
+});
 
 // Sync indicator now handled inside flushToSheets directly
 
