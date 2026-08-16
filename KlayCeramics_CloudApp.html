@@ -1581,6 +1581,18 @@ async function writeSheetTab(key, data) {
   // Each cell holds one chunk; on read we concatenate A1+B1+C1...
   const range = encodeURIComponent(`${tab}!A1`);
   try {
+    // ROOT-CAUSE FIX: Sheets' values.update never clears cells beyond the
+    // width of the data you send. If an earlier write needed, say, 3 chunks
+    // (columns A–C) and a later write only needs 2 (columns A–B), column C
+    // silently keeps its stale old content forever. Concatenating A+B+C on
+    // read then splices two *different* writes from two different points in
+    // time into one corrupt JSON string — this is exactly what happened to
+    // Sales_Pottery. Clearing the full chunk-column width before every write
+    // guarantees no stale leftover chunk can ever survive into the next read.
+    await sheetsRequest(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(`${tab}!A1:${CHUNK_READ_RANGE_END}1`)}:clear`,
+      { method: 'POST', body: JSON.stringify({}) }
+    );
     await sheetsRequest(
       `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueInputOption=RAW`,
       { method: 'PUT', body: JSON.stringify({ values: [chunks] }) }
@@ -4167,44 +4179,163 @@ function openSetup() {
 }
 
 // ══════════════════════════════════════════
-//  REPAIR HISTORICAL DATA
-//  Explicit, visible re-run of the legacy-tab recovery + permanent write-back
-//  (see the fix inside readAllFromSheets). Shows exactly what was found so
-//  it's not a silent, unverifiable background operation.
+//  DEEP REPAIR — salvages corrupted split tabs, not just missing ones.
+//
+//  readAllFromSheets() (used for normal day-to-day sync) treats ANY parse
+//  failure on a split tab as "corrupt, ignore it, trust localStorage" —
+//  which is the correct SAFE default for routine syncing, but it means a
+//  tab that's actually a jumble of two different historical writes (like
+//  Sales_Pottery) never gets its real content extracted, only bypassed.
+//
+//  This routine instead: for every sales/products split tab, reads the RAW
+//  cell content and, if it isn't valid JSON on its own, salvages every
+//  individually-parseable {...} record out of it with a regex (each sale/
+//  product record is a flat object with no nesting, so this is safe). It
+//  then unions those salvaged records with whatever's in localStorage AND
+//  whatever's in the legacy combined tab (Sales / Products), de-duplicates
+//  by id, and writes the clean, complete result back — using the now-fixed
+//  writeSheetTab, which clears the full column width first so no stale
+//  leftover chunk can corrupt this tab again.
 // ══════════════════════════════════════════
+function salvageObjectsFromText(rawText) {
+  // Sale/product records are flat objects (no nested {} or []), so a
+  // non-nested brace match safely isolates each individual record even
+  // when the surrounding text is a jumble of two different writes.
+  const matches = rawText.match(/\{[^{}]*\}/g) || [];
+  const recovered = [];
+  for (const m of matches) {
+    try {
+      const obj = JSON.parse(m);
+      if (obj && obj.id !== undefined) recovered.push(obj);
+    } catch (e) { /* torn/incomplete fragment at a chunk boundary — skip it */ }
+  }
+  return recovered;
+}
+
+function dedupeById(arr) {
+  const seen = new Map();
+  arr.forEach(x => { if (x && x.id !== undefined && !seen.has(x.id)) seen.set(x.id, x); });
+  return [...seen.values()];
+}
+
 async function repairHistoricalData() {
   if (!SHEET_ID || !OAUTH_TOKEN) {
     showAlert('Not signed in to Google. Click Sign In first.', 'error');
     document.getElementById('reconnectBar').style.display = 'flex';
     return;
   }
-  const streams = ['instore','pottery','workshop','wholesale','custom','classes'];
-  const before = {};
-  streams.forEach(s => { before[s] = (SALES[s]||[]).length; });
-  const beforeTotal = Object.values(before).reduce((a,b)=>a+b,0);
 
-  showLoadingOverlay('Checking legacy tabs for historical sales…');
-  const ok = await readAllFromSheets();
-  hideLoadingOverlay();
+  showLoadingOverlay('Reading raw Sheet contents…');
+  try {
+    const salesStreams = ['instore','pottery','workshop','wholesale','custom','classes'];
+    const salesKeys = salesStreams.map(s => 'klay_sales_' + s);
+    const productKeys = ['klay_products_shop', 'klay_products_pp'];
+    const targetKeys = [...salesKeys, ...productKeys];
+    const tabsToRead = [...targetKeys.map(k => TAB_MAP[k]), 'Sales', 'Products'];
 
-  if (!ok) {
-    showAlert('Could not reach Google Sheets — check your connection and try again.', 'error');
-    return;
-  }
+    const ranges = tabsToRead
+      .map(t => `ranges=${encodeURIComponent(t + '!A1:' + CHUNK_READ_RANGE_END + '1')}`)
+      .join('&');
+    const resp = await sheetsRequest(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?${ranges}`
+    );
+    const data = await resp.json();
+    const vrs = data.valueRanges || [];
 
-  bootApp();
+    function reassembleRow(vr) {
+      const row = vr?.values?.[0] || [];
+      return row.filter(Boolean).join('');
+    }
 
-  const after = {};
-  streams.forEach(s => { after[s] = (SALES[s]||[]).length; });
-  const afterTotal = Object.values(after).reduce((a,b)=>a+b,0);
-  const recovered = afterTotal - beforeTotal;
+    // Legacy combined tabs (index = targetKeys.length, targetKeys.length+1)
+    let legacySales = {};
+    let legacyProducts = {};
+    try { legacySales = JSON.parse(reassembleRow(vrs[targetKeys.length])) || {}; } catch (e) {}
+    try { legacyProducts = JSON.parse(reassembleRow(vrs[targetKeys.length + 1])) || {}; } catch (e) {}
 
-  if (recovered > 0) {
-    const details = streams.filter(s => after[s] > before[s])
-      .map(s => `${s} +${after[s]-before[s]}`).join(', ');
-    showAlert(`✓ Recovered ${recovered} historical sale record(s) (${details}) — now saved permanently to the Sheet.`);
-  } else {
-    showAlert(`No additional historical records found. You have ${afterTotal} sales total (${streams.map(s=>s+':'+after[s]).join(', ')}).`);
+    const before = {};
+    const after = {};
+    const salvagedFrom = []; // which tabs needed salvage (were corrupt)
+    const report = [];
+
+    targetKeys.forEach((key, i) => {
+      const rawCell = reassembleRow(vrs[i]);
+      let fromLocal = [];
+      try { fromLocal = JSON.parse(localStorage.getItem(key) || '[]') || []; } catch (e) {}
+      before[key] = fromLocal.length;
+
+      // What does the legacy tab have for this key, if anything?
+      let legacyArr = [];
+      if (key.startsWith('klay_sales_')) {
+        const stream = key.replace('klay_sales_', '');
+        legacyArr = legacySales[stream] || [];
+      } else if (key === 'klay_products_shop') {
+        legacyArr = legacyProducts.shop || [];
+      } else if (key === 'klay_products_pp') {
+        legacyArr = legacyProducts.pp || [];
+      }
+
+      // Try the split tab as clean JSON first (fast path — not corrupt)
+      let sheetArr = [];
+      let wasCorrupt = false;
+      if (rawCell) {
+        try {
+          const parsed = JSON.parse(rawCell);
+          if (Array.isArray(parsed)) sheetArr = parsed;
+        } catch (e) {
+          wasCorrupt = true;
+          sheetArr = salvageObjectsFromText(rawCell);
+        }
+      }
+      if (wasCorrupt) salvagedFrom.push(TAB_MAP[key]);
+
+      const merged = dedupeById([...fromLocal, ...sheetArr, ...legacyArr]);
+      after[key] = merged.length;
+      _cache[key] = merged;
+      localStorage.setItem(key, JSON.stringify(merged));
+      if (merged.length !== before[key]) _dirty[key] = true;
+      // If we salvaged from corruption, force a rewrite even if the count
+      // happens to match, so the corrupted cell content itself gets replaced.
+      if (wasCorrupt) _dirty[key] = true;
+
+      report.push(`${key.replace('klay_','')}: ${before[key]} → ${after[key]}${wasCorrupt ? ' (salvaged from corrupted tab)' : ''}`);
+    });
+
+    // Rebuild virtual klay_sales / klay_products from the repaired sub-keys
+    const salesObj = {};
+    salesStreams.forEach(s => { salesObj[s] = _cache['klay_sales_' + s] || []; });
+    _cache['klay_sales'] = salesObj;
+    localStorage.setItem('klay_sales', JSON.stringify(salesObj));
+    const productsObj = { shop: _cache['klay_products_shop'] || [], pp: _cache['klay_products_pp'] || [] };
+    _cache['klay_products'] = productsObj;
+    localStorage.setItem('klay_products', JSON.stringify(productsObj));
+
+    // Permanently persist the repaired data — this is what actually fixes
+    // the Sheet, replacing any corrupted cell content for good.
+    await flushToSheets();
+
+    hideLoadingOverlay();
+    bootApp();
+
+    const totalBefore = Object.values(before).reduce((a,b)=>a+b,0);
+    const totalAfter = Object.values(after).reduce((a,b)=>a+b,0);
+    const recovered = totalAfter - totalBefore;
+
+    let msg;
+    if (salvagedFrom.length) {
+      msg = `✓ Repaired ${salvagedFrom.join(', ')} (corrupted — now salvaged and rewritten cleanly). `;
+    } else {
+      msg = '';
+    }
+    msg += recovered > 0
+      ? `Recovered ${recovered} record(s) total. Detail: ${report.join(' | ')}`
+      : `No additional records found beyond what you already had (${totalAfter} total).`;
+    showAlert(msg, salvagedFrom.length || recovered > 0 ? 'success' : 'success');
+    console.log('repairHistoricalData report:', report);
+  } catch (e) {
+    hideLoadingOverlay();
+    showAlert('Repair failed: ' + e.message.slice(0, 100), 'error');
+    console.error('repairHistoricalData error:', e);
   }
 }
 
