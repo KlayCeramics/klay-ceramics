@@ -641,6 +641,8 @@
         <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="is_price" step="0.01" oninput="calcSaleTotal('is')"></div>
         <div class="form-group"><label>Quantity</label><input type="number" id="is_qty" step="1" value="1" oninput="calcSaleTotal('is')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="is_disc" step="0.01" value="0" oninput="calcSaleTotal('is')"></div>
+        <div class="form-group"><label>Payment Type</label><select id="is_paytype" onchange="calcSaleTotal('is')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group" id="is_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="is_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="is_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="is_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="is_voucher" onchange="applyVoucherDiscount('is')"><option value="">— None —</option></select></div>
@@ -671,6 +673,8 @@
         <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="pp_price" step="0.01" oninput="calcSaleTotal('pp')"></div>
         <div class="form-group"><label>Quantity</label><input type="number" id="pp_qty2" step="1" value="1" oninput="calcSaleTotal('pp')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="pp_disc" step="0.01" value="0" oninput="calcSaleTotal('pp')"></div>
+        <div class="form-group"><label>Payment Type</label><select id="pp_paytype" onchange="calcSaleTotal('pp')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group" id="pp_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="pp_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="pp_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="pp_voucher" onchange="applyVoucherDiscount('pp')"><option value="">— None —</option></select></div>
@@ -702,6 +706,8 @@
         <div class="form-group"><label>Cost per Person (USD)</label><input type="number" id="ws_cost" step="0.01" value="0" oninput="calcSaleTotal('ws')"></div>
         <div class="form-group"><label>Participants</label><input type="number" id="ws_qty" step="1" value="1" oninput="calcSaleTotal('ws')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="ws_disc" step="0.01" value="0" oninput="calcSaleTotal('ws')"></div>
+        <div class="form-group"><label>Payment Type</label><select id="ws_paytype" onchange="calcSaleTotal('ws')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group" id="ws_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="ws_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="ws_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="ws_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="ws_notes"></div>
@@ -735,6 +741,8 @@
         <div class="form-group"><label>Unit Cost (USD, auto or manual)</label><input type="number" id="wh_cost" step="0.01" value="0" oninput="calcSaleTotal('wh')"></div>
         <div class="form-group"><label>Quantity</label><input type="number" id="wh_qty" step="1" value="1" oninput="calcSaleTotal('wh')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="wh_disc" step="0.01" value="0" oninput="calcSaleTotal('wh')"></div>
+        <div class="form-group"><label>Payment Type</label><select id="wh_paytype" onchange="calcSaleTotal('wh')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group" id="wh_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="wh_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="wh_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="wh_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="wh_notes"></div>
@@ -767,6 +775,8 @@
         <div class="form-group"><label>Quantity</label><input type="number" id="cu_qty" step="1" value="1" oninput="calcSaleTotal('cu')"></div>
         <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="cu_cost" step="0.01" value="0" oninput="calcSaleTotal('cu')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="cu_disc" step="0.01" value="0" oninput="calcSaleTotal('cu')"></div>
+        <div class="form-group"><label>Payment Type</label><select id="cu_paytype" onchange="calcSaleTotal('cu')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group" id="cu_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="cu_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="cu_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="cu_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cu_notes"></div>
@@ -799,6 +809,8 @@
         <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="cl_cost" step="0.01" value="0" oninput="calcSaleTotal('cl')"></div>
         <div class="form-group"><label>Quantity / Participants</label><input type="number" id="cl_qty" step="1" value="1" oninput="calcSaleTotal('cl')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="cl_disc" step="0.01" value="0" oninput="calcSaleTotal('cl')"></div>
+        <div class="form-group"><label>Payment Type</label><select id="cl_paytype" onchange="calcSaleTotal('cl')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group" id="cl_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="cl_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="cl_total" readonly style="background:var(--sand);font-weight:600;"></div>
         <div class="form-group"><label>Profit (auto)</label><input type="text" id="cl_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cl_notes"></div>
@@ -2332,6 +2344,10 @@ function fillPPPrice() {
   calcSaleTotal('pp');
 }
 
+// Ecocash mobile-money transaction fee, deducted from profit (not from what
+// the customer paid) — the sale Total stays as the full charged amount.
+const ECOCASH_FEE_RATE = 0.017;
+
 function calcSaleTotal(prefix) {
   const price = parseFloat(document.getElementById(prefix+'_price')?.value) || 0;
   const qty   = parseFloat(document.getElementById(prefix+'_qty')?.value || document.getElementById(prefix+'_qty2')?.value) || 1;
@@ -2339,6 +2355,13 @@ function calcSaleTotal(prefix) {
   const total = price * qty - disc;
   const totalEl = document.getElementById(prefix+'_total');
   if (totalEl) totalEl.value = fmt(total);
+
+  const payType = document.getElementById(prefix+'_paytype')?.value || 'cash';
+  const ecocashFee = payType === 'ecocash' ? total * ECOCASH_FEE_RATE : 0;
+  const feeEl = document.getElementById(prefix+'_fee');
+  const feeGroupEl = document.getElementById(prefix+'_fee_group');
+  if (feeEl) feeEl.value = fmt(ecocashFee);
+  if (feeGroupEl) feeGroupEl.style.display = payType === 'ecocash' ? '' : 'none';
 
   const profitEl = document.getElementById(prefix+'_profit');
   if (profitEl) {
@@ -2364,14 +2387,19 @@ function calcSaleTotal(prefix) {
       const unitCost = parseFloat(document.getElementById('cl_cost')?.value) || 0;
       cost = unitCost * qty;
     }
-    const profit = total - cost;
+    const profit = total - cost - ecocashFee;
     profitEl.value = fmt(profit);
     profitEl.style.color = profit >= 0 ? 'var(--glaze-green)' : '#c04444';
   }
 }
 
 function addSale(stream) {
-  const dateMap = { instore:'is_date', pottery:'pp_date', workshop:'ws_date', wholesale:'wh_date', custom:'cu_date', classes:'cl_date' };
+  const dateMap   = { instore:'is_date', pottery:'pp_date', workshop:'ws_date', wholesale:'wh_date', custom:'cu_date', classes:'cl_date' };
+  const prefixMap = { instore:'is', pottery:'pp', workshop:'ws', wholesale:'wh', custom:'cu', classes:'cl' };
+  const streamLabels = {
+    instore: 'In-Store', pottery: 'Pottery Painting', workshop: 'Workshop',
+    wholesale: 'Wholesale', custom: 'Custom Order', classes: 'Class'
+  };
   const date = document.getElementById(dateMap[stream]).value;
   if (!date) { showAlert('Please enter a date.','error'); return; }
 
@@ -2536,8 +2564,41 @@ function addSale(stream) {
     const _clva = document.getElementById('cl_voucher_apply'); if(_clva) _clva.value='';
   }
 
+  // ── Payment type: Cash vs Ecocash ──────────────────────────────
+  // Ecocash carries a 1.7% transaction fee, which comes off profit (the
+  // customer still pays the full Total — the fee is a cost of accepting
+  // mobile money, not a discount). Cash sales get their full amount
+  // automatically logged into the Cash Float ("cash box") as an income
+  // transaction, since that money is physically in the till.
+  const prefix = prefixMap[stream];
+  const payType = document.getElementById(prefix + '_paytype')?.value || 'cash';
+  const ecocashFee = payType === 'ecocash' ? Math.round(sale.total * ECOCASH_FEE_RATE * 100) / 100 : 0;
+  sale.paymentType = payType;
+  sale.ecocashFee  = ecocashFee;
+  sale.profit      = (sale.profit || 0) - ecocashFee;
+
+  // Reset payment fields on the form back to default
+  const paytypeEl = document.getElementById(prefix + '_paytype');
+  if (paytypeEl) paytypeEl.value = 'cash';
+  const feeEl = document.getElementById(prefix + '_fee');
+  if (feeEl) feeEl.value = '';
+  const feeGroupEl = document.getElementById(prefix + '_fee_group');
+  if (feeGroupEl) feeGroupEl.style.display = 'none';
+
   SALES[stream].push(sale);
   save(KEYS.sales, SALES);
+
+  if (payType === 'cash' && sale.total > 0) {
+    const label = sale.productName || sale.cat || sale.desc || '';
+    FLOAT.push({
+      id: sale.id + 1, date, type: 'in', amount: sale.total,
+      desc: `${streamLabels[stream]} sale${label ? ' — ' + label : ''} (cash)`,
+      auto: true, saleId: sale.id, saleStream: stream
+    });
+    save(KEYS.float, FLOAT);
+    renderFloat();
+  }
+
   renderSalesLog(stream);
   renderCatalogue('shop');
   renderCatalogue('pp');
@@ -2548,6 +2609,14 @@ function deleteSale(stream, id) {
   if (!confirm('Delete this sale entry?')) return;
   SALES[stream] = SALES[stream].filter(s => s.id !== id);
   save(KEYS.sales, SALES);
+  // Remove any cash float entry that was auto-created for this sale, so the
+  // cash box stays accurate when a cash sale is deleted.
+  const floatBefore = FLOAT.length;
+  FLOAT = FLOAT.filter(tx => !(tx.auto && tx.saleId === id));
+  if (FLOAT.length !== floatBefore) {
+    save(KEYS.float, FLOAT);
+    renderFloat();
+  }
   renderSalesLog(stream);
   showAlert('Sale deleted.');
 }
@@ -2583,7 +2652,7 @@ function renderSalesLog(stream) {
       <th>Date</th>
       <th>${isProductStream ? 'Product' : 'Client / Category'}</th>
       <th>Description</th><th>Unit Price</th><th>Qty</th>
-      <th>Discount</th><th>Total</th>
+      <th>Discount</th><th>Payment</th><th>Total</th>
       <th>Profit</th>
       <th>Notes</th><th>Voucher</th><th></th>
     </tr></thead>
@@ -2595,6 +2664,7 @@ function renderSalesLog(stream) {
         <td class="num">${fmt(s.price)}</td>
         <td class="num">${s.qty}</td>
         <td class="num">${fmt(s.disc)}</td>
+        <td>${s.paymentType === 'ecocash' ? `📱 Ecocash<br><span style="font-size:0.72rem;color:#c04444;">fee ${fmt(s.ecocashFee||0)}</span>` : '💵 Cash'}</td>
         <td class="num"><strong>${fmt(s.total)}</strong></td>
         <td class="num ${(s.profit||0)>=0?'profit-pos':'profit-neg'}">${fmt(s.profit||0)}</td>
         <td>${s.notes||'—'}</td>
@@ -2602,7 +2672,7 @@ function renderSalesLog(stream) {
         <td style="display:flex;gap:0.3rem;"><button class="btn btn-ghost btn-sm" onclick="openSaleEdit('${stream}',${s.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteSale('${stream}',${s.id})">✕</button></td>
       </tr>`).join('')}
       <tr style="background:var(--sand);font-weight:600;">
-        <td colspan="7" style="text-align:right;padding-right:0.8rem;">Period Total</td>
+        <td colspan="8" style="text-align:right;padding-right:0.8rem;">Period Total</td>
         <td class="num">${fmt(totalRevenue)}</td>
         <td class="num profit-pos">${fmt(totalProfit)}</td>
         <td colspan="2"></td>
@@ -3156,18 +3226,20 @@ function exportMonthExcel(stream) {
   // ── Sheet 1: Sales Data ──
   const isProductStream = stream === 'instore' || stream === 'pottery';
   const headers = ['Date', isProductStream ? 'Product' : 'Client / Category',
-    'Description', 'Unit Price (USD)', 'Quantity', 'Discount (USD)', 'Total (USD)', 'Profit (USD)', 'Notes'];
+    'Description', 'Unit Price (USD)', 'Quantity', 'Discount (USD)', 'Payment', 'Total (USD)', 'Profit (USD)', 'Notes'];
   const rows = data.map(s => [
     s.date, s.productName || s.cat || '', s.desc || '',
-    s.price || 0, s.qty || 0, s.disc || 0, s.total || 0, s.profit || 0,
+    s.price || 0, s.qty || 0, s.disc || 0,
+    s.paymentType === 'ecocash' ? `Ecocash (fee ${fmt(s.ecocashFee||0)})` : 'Cash',
+    s.total || 0, s.profit || 0,
     s.notes || ''
   ]);
-  const totalRow = ['TOTAL', '', '', '', '', '',
+  const totalRow = ['TOTAL', '', '', '', '', '', '',
     data.reduce((a,s)=>a+(s.total||0),0),
     data.reduce((a,s)=>a+(s.profit||0),0), ''];
   const wsData = [headers, ...rows, [], totalRow];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [10,22,25,14,10,14,14,14,22].map(w=>({wch:w}));
+  ws['!cols'] = [10,22,25,14,10,14,16,14,14,22].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, ws, streamLabels[stream].slice(0,31));
 
   // ── Sheet 2: Monthly Summary ──
