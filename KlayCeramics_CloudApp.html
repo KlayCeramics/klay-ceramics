@@ -270,6 +270,29 @@
   .alert-success { background: #e6f4ea; color: #2e7d32; border: 1px solid #a5d6a7; }
   .alert-error { background: #fdecea; color: #c62828; border: 1px solid #ef9a9a; }
   .flex-end { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+  /* ── ROLES: the shop-assistant login never shows owner-only elements ── */
+  body.role-assistant .owner-only { display:none !important; }
+  .role-badge { font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:20px; background:rgba(255,255,255,0.12); color:var(--sand); white-space:nowrap; }
+  /* ── POS SUBPAGES ── */
+  .pos-sub { display:none; }
+  .pos-sub.active { display:block; }
+  .pos-bar { margin-bottom:1.2rem; }
+  .pos-bar .tab-btn { font-size:0.95rem; padding:0.6rem 1.3rem; }
+  /* ── MONTHLY PERFORMANCE CHART ── */
+  .viz-root { --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; position:relative; }
+  .viz-legend { display:flex; gap:1.1rem; flex-wrap:wrap; font-size:0.8rem; color:var(--smoke); margin-bottom:0.6rem; }
+  .viz-legend span { display:inline-flex; align-items:center; gap:0.4rem; }
+  .viz-legend i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+  .viz-svg { width:100%; height:auto; display:block; overflow:visible; }
+  .viz-svg text { font-family:'DM Sans',sans-serif; fill:var(--ash); font-size:11px; }
+  .viz-hit { fill:transparent; cursor:default; outline:none; }
+  .viz-hit:hover, .viz-hit:focus { fill:rgba(61,46,37,0.05); }
+  .viz-tip { position:absolute; pointer-events:none; background:var(--white); border:1px solid var(--sand-dark); border-radius:8px; box-shadow:var(--shadow-lg); padding:0.55rem 0.75rem; font-size:0.78rem; color:var(--ash); display:none; z-index:20; min-width:170px; }
+  .viz-tip .tm { font-weight:600; color:var(--smoke); margin-bottom:0.3rem; }
+  .viz-tip .tr { display:flex; align-items:center; gap:0.5rem; margin-top:0.15rem; }
+  .viz-tip .tk { width:12px; height:3px; border-radius:2px; display:inline-block; }
+  .viz-tip .tv { margin-left:auto; font-weight:600; color:var(--smoke); }
+  .viz-note { font-size:0.74rem; color:var(--ash); margin-top:0.7rem; font-style:italic; }
   .month-selector { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
   .month-selector select { padding: 0.4rem 0.7rem; border: 1.5px solid var(--sand-dark); border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; background: var(--cream); color: var(--smoke); }
 
@@ -402,6 +425,45 @@
 </style>
 </head>
 <body>
+<!-- ══════════════ LOGIN ══════════════ -->
+<div class="setup-overlay" id="authOverlay" style="display:none;z-index:9000;background:var(--smoke);">
+  <div class="setup-box" style="max-width:420px;">
+    <div class="setup-logo">Klay <span>Ceramics</span></div>
+    <div class="setup-subtitle" id="authSubtitle"></div>
+    <div id="authSetupBox" style="display:none;">
+      <div class="setup-field"><label>Owner passcode (full access)</label><input type="password" id="auth_new_owner" autocomplete="new-password"></div>
+      <div class="setup-field"><label>Confirm owner passcode</label><input type="password" id="auth_new_owner2" autocomplete="new-password"></div>
+      <div class="setup-field"><label>Shop assistant passcode (POS only — optional)</label><input type="password" id="auth_new_asst" autocomplete="new-password"></div>
+      <div style="font-size:0.74rem;color:var(--ash);margin-bottom:1rem;">At least 4 characters. These passcodes are stored (hashed) on this device only — set them on each device you use.</div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="authCreate()">Save &amp; Continue</button>
+    </div>
+    <div id="authLoginBox" style="display:none;">
+      <div class="setup-field"><label>Log in as</label>
+        <select id="auth_role" style="width:100%;border:1.5px solid var(--sand-dark);border-radius:6px;padding:0.5rem 0.7rem;font-size:0.88rem;background:var(--white);color:var(--smoke);">
+          <option value="owner">Owner</option><option value="assistant">Shop Assistant</option>
+        </select></div>
+      <div class="setup-field"><label>Passcode</label><input type="password" id="auth_pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="authLogin()">Log In</button>
+    </div>
+    <div id="authMsg" style="color:#c04444;font-size:0.82rem;margin-top:0.8rem;min-height:1.1rem;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="authSettingsModal" onclick="if(event.target===this)closeAuthSettings()">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-header"><div class="modal-title">Change Passcodes</div><button class="modal-close" onclick="closeAuthSettings()">✕</button></div>
+    <div class="form-grid wide">
+      <div class="form-group"><label>New owner passcode</label><input type="password" id="as_owner" placeholder="leave blank to keep" autocomplete="new-password"></div>
+      <div class="form-group"><label>New shop assistant passcode</label><input type="password" id="as_asst" placeholder="leave blank to keep" autocomplete="new-password"></div>
+    </div>
+    <label style="display:flex;gap:0.5rem;align-items:center;font-size:0.82rem;margin-top:0.8rem;"><input type="checkbox" id="as_disable"> Disable the shop assistant login on this device</label>
+    <div class="flex-end" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeAuthSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAuthSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ SETUP OVERLAY ══════════════ -->
 <div class="setup-overlay" id="setupOverlay">
   <div class="setup-box">
@@ -436,7 +498,7 @@
 <div class="reconnect-bar" id="reconnectBar">
   <span class="rb-msg">☁️ Sign in to sync with Google Sheets</span>
   <button class="btn btn-secondary btn-sm" onclick="reconnectGoogle()" id="signinBtn">Sign In</button>
-  <button class="btn btn-ghost btn-sm" id="uploadLocalBtn" style="display:none;" onclick="pushAllToSheets()">⬆ Upload Local Data</button>
+  <button class="btn btn-ghost btn-sm owner-only" id="uploadLocalBtn" style="display:none;" onclick="pushAllToSheets()">⬆ Upload Local Data</button>
   <button class="btn btn-ghost btn-sm" onclick="document.getElementById('reconnectBar').style.display='none'">Use offline</button>
 </div>
 
@@ -444,26 +506,28 @@
 <header class="app-header">
   <div class="logo">Klay <span>Ceramics</span></div>
   <div style="display:flex;align-items:center;gap:0.7rem;margin-left:auto;">
+    <span class="role-badge" id="roleBadge" style="display:none;"></span>
+    <button class="btn btn-ghost btn-sm owner-only" style="color:var(--sand);border-color:rgba(255,255,255,0.3);" onclick="openAuthSettings()" title="Change passcodes">🔐</button>
+    <button class="btn btn-ghost btn-sm" style="color:var(--sand);border-color:rgba(255,255,255,0.3);" onclick="authLogout()">Log out</button>
     <span class="sync-indicator" id="syncIndicator" style="display:none;">✓ Synced</span>
     <div class="header-month" id="headerDate"></div>
   </div>
 </header>
 
 <nav class="app-nav">
-  <button class="nav-btn active" onclick="showPage('dashboard')">Dashboard</button>
-  <button class="nav-btn" onclick="showPage('costs')">Cost Lookup</button>
-  <button class="nav-btn" onclick="showPage('products')">Products</button>
-  <button class="nav-btn" onclick="showPage('sales')">Sales</button>
-  <button class="nav-btn" onclick="showPage('expenses')">Expenses</button>
-  <button class="nav-btn" onclick="showPage('stock')">Stock Log</button>
-  <button class="nav-btn" onclick="showPage('quote')">Quote Estimator</button>
-  <button class="nav-btn" onclick="showPage('float')">💵 Cash Float</button>
+  <button class="nav-btn owner-only active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button>
+  <button class="nav-btn owner-only" data-page="costs" onclick="showPage('costs')">Cost Lookup</button>
+  <button class="nav-btn owner-only" data-page="products" onclick="showPage('products')">Products</button>
+  <button class="nav-btn" data-page="pos" onclick="showPage('pos')">🛒 POS</button>
+  <button class="nav-btn owner-only" data-page="orders" onclick="showPage('orders')">✏️ Custom Orders</button>
+  <button class="nav-btn owner-only" data-page="expenses" onclick="showPage('expenses')">Expenses</button>
+  <button class="nav-btn owner-only" data-page="float" onclick="showPage('float')">💵 Cash Float</button>
 </nav>
 
 <div class="app-body">
 
 <!-- ══════════════ DASHBOARD ══════════════ -->
-<div class="page active" id="page-dashboard">
+<div class="page active owner-only" id="page-dashboard">
   <div class="section-title">Dashboard</div>
   <div class="section-sub" id="dashSubtitle">Monthly overview for Klay Ceramics</div>
   
@@ -498,17 +562,37 @@
     <div id="dashCapital"></div>
   </div>
 
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-title" style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+      📈 Monthly Performance
+      <span style="font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--ash);letter-spacing:0.04em;">income, expenses and profit by month</span>
+      <span style="margin-left:auto;display:flex;gap:0.5rem;align-items:center;">
+        <select id="dashChartRange" onchange="renderMonthlyChart()" style="padding:0.3rem 0.55rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.78rem;background:var(--cream);color:var(--smoke);">
+          <option value="6">Last 6 months</option>
+          <option value="12" selected>Last 12 months</option>
+          <option value="all">All months</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="dashChartToggle" onclick="toggleChartTable()">Table view</button>
+      </span>
+    </div>
+    <div id="dashChart" class="viz-root"></div>
+  </div>
+
   <div class="card" style="margin-top:0;">
-    <div class="card-title" style="display:flex;align-items:center;gap:0.6rem;">
-      📊 All-Time Summary
-      <span style="font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--ash);letter-spacing:0.04em;">from first entry to today</span>
+    <div class="card-title" style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+      <span id="dashAllTimeTitle">📊 All-Time Summary</span>
+      <span id="dashAllTimeSub" style="font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--ash);letter-spacing:0.04em;">from first entry to today</span>
+      <span style="margin-left:auto;display:flex;gap:0.5rem;align-items:center;">
+        <label style="font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:400;color:var(--ash);text-transform:uppercase;letter-spacing:0.06em;">Filter</label>
+        <select id="dashAllTimeMonth" onchange="renderDashboard()" style="padding:0.3rem 0.55rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.78rem;background:var(--cream);color:var(--smoke);"></select>
+      </span>
     </div>
     <div id="dashAllTime"></div>
   </div>
 </div>
 
 <!-- ══════════════ COST LOOKUP ══════════════ -->
-<div class="page" id="page-costs">
+<div class="page owner-only" id="page-costs">
   <div class="section-title">Cost Lookup</div>
   <div class="section-sub">Base costs used to calculate product pricing across the studio.</div>
 
@@ -550,7 +634,7 @@
 </div>
 
 <!-- ══════════════ PRODUCTS ══════════════ -->
-<div class="page" id="page-products">
+<div class="page owner-only" id="page-products">
   <div class="section-title">Product Catalogue</div>
   <div class="section-sub">Manage shop stock and pottery painting pieces with full cost breakdowns.</div>
 
@@ -616,16 +700,22 @@
   </div>
 </div>
 
-<!-- ══════════════ SALES ══════════════ -->
-<div class="page" id="page-sales">
-  <div class="section-title">Sales Tracker</div>
-  <div class="section-sub">Record all sales across all revenue streams.</div>
+<!-- ══════════════ POS ══════════════ -->
+<div class="page" id="page-pos">
+  <div class="section-title">Point of Sale</div>
+  <div class="section-sub">Log sales and bookings.</div>
+
+  <div class="tab-bar pos-bar">
+    <button class="tab-btn active" data-pos="sales" onclick="switchPosSub('sales')">🛒 Sales</button>
+    <button class="tab-btn" data-pos="bookings" onclick="switchPosSub('bookings')">📅 Bookings</button>
+  </div>
+
+<!-- Sales subpage (the former Sales page, moved here unchanged apart from removed stream types) -->
+<div class="pos-sub active" id="possub-sales">
 
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchSalesTab('instore')">🏪 In-Store</button>
     <button class="tab-btn" onclick="switchSalesTab('pottery')">🎨 Pottery Painting</button>
-    <button class="tab-btn" onclick="switchSalesTab('workshop')">🧑‍🎨 Workshops</button>
-    <button class="tab-btn" onclick="switchSalesTab('wholesale')">📦 Wholesale</button>
     <button class="tab-btn" onclick="switchSalesTab('custom')">✏️ Custom</button>
     <button class="tab-btn" onclick="switchSalesTab('classes')">🎓 Classes</button>
     <button class="tab-btn" onclick="switchSalesTab('vouchers')">🎁 Gift Vouchers</button>
@@ -637,14 +727,17 @@
       <div class="form-grid wide">
         <div class="form-group"><label>Date</label><input type="date" id="is_date"></div>
         <div class="form-group"><label>Product</label><select id="is_product" onchange="fillInstorePrice()"><option value="">— Select —</option></select></div>
+        <div class="form-group" id="is_other_group" style="display:none;"><label>Item Name (Other)</label><input type="text" id="is_other_name" placeholder="What was sold?"></div>
+        <div class="form-group" id="is_othercost_group" style="display:none;"><label>Unit Cost (USD) — editable</label><input type="number" id="is_other_cost" step="0.01" value="0" oninput="calcSaleTotal('is')"></div>
         <div class="form-group"><label>Description / Notes</label><input type="text" id="is_desc"></div>
         <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="is_price" step="0.01" oninput="calcSaleTotal('is')"></div>
         <div class="form-group"><label>Quantity</label><input type="number" id="is_qty" step="1" value="1" oninput="calcSaleTotal('is')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="is_disc" step="0.01" value="0" oninput="calcSaleTotal('is')"></div>
-        <div class="form-group"><label>Payment Type</label><select id="is_paytype" onchange="calcSaleTotal('is')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group"><label>Payment Type</label><select id="is_paytype" onchange="calcSaleTotal('is')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option><option value="other">📝 Other</option></select></div>
         <div class="form-group" id="is_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="is_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
+        <div class="form-group" id="is_payother_group" style="display:none;"><label>Payment Description (Other)</label><input type="text" id="is_payother" placeholder="e.g. bank transfer, swap, card"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="is_total" readonly style="background:var(--sand);font-weight:600;"></div>
-        <div class="form-group"><label>Profit (auto)</label><input type="text" id="is_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group owner-only"><label>Profit (auto)</label><input type="text" id="is_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="is_voucher" onchange="applyVoucherDiscount('is')"><option value="">— None —</option></select></div>
         <div class="form-group" id="is_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="is_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
         <div class="form-group" id="is_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="is_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('is')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
@@ -654,7 +747,7 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
         <div class="card-title" style="margin:0;border:none;padding:0;">In-Store Sales Log</div>
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <div class="owner-only" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
           <select id="filter-instore" onchange="renderSalesLog('instore')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('instore')">⬇ Export Excel</button>
         </div>
@@ -669,14 +762,17 @@
       <div class="form-grid wide">
         <div class="form-group"><label>Date</label><input type="date" id="pp_date"></div>
         <div class="form-group"><label>Product</label><select id="pp_product" onchange="fillPPPrice()"><option value="">— Select —</option></select></div>
+        <div class="form-group" id="pp_other_group" style="display:none;"><label>Item Name (Other)</label><input type="text" id="pp_other_name" placeholder="What was sold?"></div>
+        <div class="form-group" id="pp_othercost_group" style="display:none;"><label>Unit Cost (USD) — editable</label><input type="number" id="pp_other_cost" step="0.01" value="0" oninput="calcSaleTotal('pp')"></div>
         <div class="form-group"><label>Description / Notes</label><input type="text" id="pp_desc"></div>
         <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="pp_price" step="0.01" oninput="calcSaleTotal('pp')"></div>
         <div class="form-group"><label>Quantity</label><input type="number" id="pp_qty2" step="1" value="1" oninput="calcSaleTotal('pp')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="pp_disc" step="0.01" value="0" oninput="calcSaleTotal('pp')"></div>
-        <div class="form-group"><label>Payment Type</label><select id="pp_paytype" onchange="calcSaleTotal('pp')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group"><label>Payment Type</label><select id="pp_paytype" onchange="calcSaleTotal('pp')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option><option value="other">📝 Other</option></select></div>
         <div class="form-group" id="pp_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="pp_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
+        <div class="form-group" id="pp_payother_group" style="display:none;"><label>Payment Description (Other)</label><input type="text" id="pp_payother" placeholder="e.g. bank transfer, swap, card"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="pp_total" readonly style="background:var(--sand);font-weight:600;"></div>
-        <div class="form-group"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group owner-only"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="pp_voucher" onchange="applyVoucherDiscount('pp')"><option value="">— None —</option></select></div>
         <div class="form-group" id="pp_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="pp_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
         <div class="form-group" id="pp_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="pp_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('pp')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
@@ -686,81 +782,12 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
         <div class="card-title" style="margin:0;border:none;padding:0;">Pottery Painting Sales Log</div>
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <div class="owner-only" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
           <select id="filter-pottery" onchange="renderSalesLog('pottery')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('pottery')">⬇ Export Excel</button>
         </div>
       </div>
       <div id="slog-pottery"></div>
-    </div>
-  </div>
-
-  <div class="tab-pane" id="stab-workshop">
-    <div class="card">
-      <div class="card-title">New Workshop Sale</div>
-      <div class="form-grid wide">
-        <div class="form-group"><label>Date</label><input type="date" id="ws_date"></div>
-        <div class="form-group"><label>Workshop Name / Category</label><input type="text" id="ws_cat"></div>
-        <div class="form-group"><label>Description</label><input type="text" id="ws_desc"></div>
-        <div class="form-group"><label>Price per Person (USD)</label><input type="number" id="ws_price" step="0.01" oninput="calcSaleTotal('ws')"></div>
-        <div class="form-group"><label>Cost per Person (USD)</label><input type="number" id="ws_cost" step="0.01" value="0" oninput="calcSaleTotal('ws')"></div>
-        <div class="form-group"><label>Participants</label><input type="number" id="ws_qty" step="1" value="1" oninput="calcSaleTotal('ws')"></div>
-        <div class="form-group"><label>Discount (USD)</label><input type="number" id="ws_disc" step="0.01" value="0" oninput="calcSaleTotal('ws')"></div>
-        <div class="form-group"><label>Payment Type</label><select id="ws_paytype" onchange="calcSaleTotal('ws')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
-        <div class="form-group" id="ws_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="ws_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
-        <div class="form-group"><label>Total (auto)</label><input type="text" id="ws_total" readonly style="background:var(--sand);font-weight:600;"></div>
-        <div class="form-group"><label>Profit (auto)</label><input type="text" id="ws_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
-        <div class="form-group"><label>Notes</label><input type="text" id="ws_notes"></div>
-        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="ws_voucher" onchange="applyVoucherDiscount('ws')"><option value="">— None —</option></select></div>
-        <div class="form-group" id="ws_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="ws_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
-        <div class="form-group" id="ws_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="ws_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('ws')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
-      </div>
-      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('workshop')">Record Sale</button></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
-        <div class="card-title" style="margin:0;border:none;padding:0;">Workshop Sales Log</div>
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-          <select id="filter-workshop" onchange="renderSalesLog('workshop')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
-          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('workshop')">⬇ Export Excel</button>
-        </div>
-      </div>
-      <div id="slog-workshop"></div>
-    </div>
-  </div>
-
-  <div class="tab-pane" id="stab-wholesale">
-    <div class="card">
-      <div class="card-title">New Wholesale Order</div>
-      <div class="form-grid wide">
-        <div class="form-group"><label>Date</label><input type="date" id="wh_date"></div>
-        <div class="form-group"><label>Client / Stockist</label><input type="text" id="wh_cat"></div>
-        <div class="form-group"><label>Product (optional)</label><select id="wh_product" onchange="fillWholesaleFromProduct()"><option value="">— Select or enter manually —</option></select></div>
-        <div class="form-group"><label>Product Description</label><input type="text" id="wh_desc"></div>
-        <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="wh_price" step="0.01" oninput="calcSaleTotal('wh')"></div>
-        <div class="form-group"><label>Unit Cost (USD, auto or manual)</label><input type="number" id="wh_cost" step="0.01" value="0" oninput="calcSaleTotal('wh')"></div>
-        <div class="form-group"><label>Quantity</label><input type="number" id="wh_qty" step="1" value="1" oninput="calcSaleTotal('wh')"></div>
-        <div class="form-group"><label>Discount (USD)</label><input type="number" id="wh_disc" step="0.01" value="0" oninput="calcSaleTotal('wh')"></div>
-        <div class="form-group"><label>Payment Type</label><select id="wh_paytype" onchange="calcSaleTotal('wh')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
-        <div class="form-group" id="wh_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="wh_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
-        <div class="form-group"><label>Total (auto)</label><input type="text" id="wh_total" readonly style="background:var(--sand);font-weight:600;"></div>
-        <div class="form-group"><label>Profit (auto)</label><input type="text" id="wh_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
-        <div class="form-group"><label>Notes</label><input type="text" id="wh_notes"></div>
-        <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="wh_voucher" onchange="applyVoucherDiscount('wh')"><option value="">— None —</option></select></div>
-        <div class="form-group" id="wh_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="wh_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
-        <div class="form-group" id="wh_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="wh_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('wh')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
-      </div>
-      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('wholesale')">Record Sale</button></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
-        <div class="card-title" style="margin:0;border:none;padding:0;">Wholesale Sales Log</div>
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-          <select id="filter-wholesale" onchange="renderSalesLog('wholesale')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
-          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('wholesale')">⬇ Export Excel</button>
-        </div>
-      </div>
-      <div id="slog-wholesale"></div>
     </div>
   </div>
 
@@ -775,10 +802,13 @@
         <div class="form-group"><label>Quantity</label><input type="number" id="cu_qty" step="1" value="1" oninput="calcSaleTotal('cu')"></div>
         <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="cu_cost" step="0.01" value="0" oninput="calcSaleTotal('cu')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="cu_disc" step="0.01" value="0" oninput="calcSaleTotal('cu')"></div>
-        <div class="form-group"><label>Payment Type</label><select id="cu_paytype" onchange="calcSaleTotal('cu')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group"><label>Due Date</label><input type="date" id="cu_due" data-nodefault></div>
+        <div class="form-group"><label>Paid Now (USD)</label><input type="number" id="cu_paidnow" step="0.01" min="0" placeholder="blank = paid in full" oninput="calcSaleTotal('cu')"><span class="inline-calc">Deposit or part-payment. The balance is tracked on the Custom Orders page.</span></div>
+        <div class="form-group"><label>Payment Type (for amount paid now)</label><select id="cu_paytype" onchange="calcSaleTotal('cu')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option><option value="other">📝 Other</option></select></div>
         <div class="form-group" id="cu_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="cu_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
+        <div class="form-group" id="cu_payother_group" style="display:none;"><label>Payment Description (Other)</label><input type="text" id="cu_payother" placeholder="e.g. bank transfer, swap, card"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="cu_total" readonly style="background:var(--sand);font-weight:600;"></div>
-        <div class="form-group"><label>Profit (auto)</label><input type="text" id="cu_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group owner-only"><label>Profit (auto)</label><input type="text" id="cu_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cu_notes"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="cu_voucher" onchange="applyVoucherDiscount('cu')"><option value="">— None —</option></select></div>
         <div class="form-group" id="cu_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="cu_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
@@ -789,7 +819,7 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
         <div class="card-title" style="margin:0;border:none;padding:0;">Custom Orders Log</div>
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <div class="owner-only" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
           <select id="filter-custom" onchange="renderSalesLog('custom')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('custom')">⬇ Export Excel</button>
         </div>
@@ -809,10 +839,11 @@
         <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="cl_cost" step="0.01" value="0" oninput="calcSaleTotal('cl')"></div>
         <div class="form-group"><label>Quantity / Participants</label><input type="number" id="cl_qty" step="1" value="1" oninput="calcSaleTotal('cl')"></div>
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="cl_disc" step="0.01" value="0" oninput="calcSaleTotal('cl')"></div>
-        <div class="form-group"><label>Payment Type</label><select id="cl_paytype" onchange="calcSaleTotal('cl')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option></select></div>
+        <div class="form-group"><label>Payment Type</label><select id="cl_paytype" onchange="calcSaleTotal('cl')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option><option value="other">📝 Other</option></select></div>
         <div class="form-group" id="cl_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="cl_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
+        <div class="form-group" id="cl_payother_group" style="display:none;"><label>Payment Description (Other)</label><input type="text" id="cl_payother" placeholder="e.g. bank transfer, swap, card"></div>
         <div class="form-group"><label>Total (auto)</label><input type="text" id="cl_total" readonly style="background:var(--sand);font-weight:600;"></div>
-        <div class="form-group"><label>Profit (auto)</label><input type="text" id="cl_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+        <div class="form-group owner-only"><label>Profit (auto)</label><input type="text" id="cl_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Notes</label><input type="text" id="cl_notes"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="cl_voucher" onchange="applyVoucherDiscount('cl')"><option value="">— None —</option></select></div>
         <div class="form-group" id="cl_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="cl_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
@@ -823,7 +854,7 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
         <div class="card-title" style="margin:0;border:none;padding:0;">Classes Log</div>
-        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <div class="owner-only" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
           <select id="filter-classes" onchange="renderSalesLog('classes')" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel('classes')">⬇ Export Excel</button>
         </div>
@@ -849,7 +880,7 @@
       </div>
       <div class="flex-end"><button class="btn btn-primary" onclick="issueVoucher()">🎁 Issue Voucher</button></div>
     </div>
-    <div class="card">
+    <div class="card owner-only">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
         <div class="card-title" style="margin:0;border:none;padding:0;">Gift Voucher Log</div>
         <div style="display:flex;align-items:center;gap:0.75rem;">
@@ -861,10 +892,60 @@
     </div>
   </div>
 
+</div><!-- end possub-sales -->
+
+<!-- Bookings subpage -->
+<div class="pos-sub" id="possub-bookings">
+  <div class="card">
+    <div class="card-title" id="bkFormTitle">New Booking</div>
+    <div class="form-grid wide">
+      <div class="form-group"><label>Booking Type</label>
+        <select id="bk_type"><option value="Pottery Painting">🎨 Pottery Painting</option><option value="Class">🎓 Class</option></select></div>
+      <div class="form-group"><label>Name</label><input type="text" id="bk_name" placeholder="Customer name"></div>
+      <div class="form-group"><label>Contact</label><input type="text" id="bk_contact" placeholder="Phone / WhatsApp / email"></div>
+      <div class="form-group"><label>Date of Booking</label><input type="date" id="bk_date"></div>
+      <div class="form-group"><label>Quantity (people)</label><input type="number" id="bk_qty" step="1" min="1" value="1"></div>
+      <div class="form-group"><label>Notes</label><input type="text" id="bk_notes" placeholder="e.g. birthday party, 2 kids"></div>
+    </div>
+    <div class="flex-end">
+      <button class="btn btn-secondary" id="bkCancelBtn" style="display:none;" onclick="resetBookingForm()">Cancel Edit</button>
+      <button class="btn btn-primary" id="bkSaveBtn" onclick="saveBooking()">Log Booking</button>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+      <div class="card-title" style="margin:0;border:none;padding:0;">Bookings</div>
+      <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <span id="bkSummary" style="font-size:0.8rem;color:var(--ash);"></span>
+        <select id="bk_filter" onchange="renderBookings()" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);">
+          <option value="upcoming">Upcoming</option><option value="past">Past</option><option value="all">All</option>
+        </select>
+      </div>
+    </div>
+    <div id="bookingLog"></div>
+  </div>
+</div><!-- end possub-bookings -->
+
+</div><!-- end page-pos -->
+
+<!-- ══════════════ CUSTOM ORDERS ══════════════ -->
+<div class="page owner-only" id="page-orders">
+  <div class="section-title">Custom Orders</div>
+  <div class="section-sub">Every custom order with what has been paid and what is still due. Orders are created in POS → Sales → Custom.</div>
+  <div id="orderStats" class="stats-grid" style="margin-bottom:1.2rem;"></div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+      <div class="card-title" style="margin:0;border:none;padding:0;">All Custom Orders</div>
+      <select id="order_filter" onchange="renderCustomOrders()" style="padding:0.35rem 0.6rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);">
+        <option value="open">Outstanding balance</option><option value="settled">Fully paid</option><option value="all">All orders</option>
+      </select>
+    </div>
+    <div id="orderList"></div>
+  </div>
 </div>
 
 <!-- ══════════════ EXPENSES ══════════════ -->
-<div class="page" id="page-expenses">
+<div class="page owner-only" id="page-expenses">
   <div class="section-title">Expenses</div>
   <div class="section-sub">Track all studio expenditure across three accounting categories.</div>
 
@@ -1054,188 +1135,8 @@
 
 </div>
 
-<!-- ══════════════ STOCK LOG ══════════════ -->
-<div class="page" id="page-stock">
-  <div class="section-title">Stock Log</div>
-  <div class="section-sub">Current inventory levels, auto-updated when sales are recorded.</div>
-
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchStockTab('shop')">🏺 Shop Stock</button>
-    <button class="tab-btn" onclick="switchStockTab('pp')">🎨 Pottery Painting</button>
-  </div>
-
-  <div class="tab-pane active" id="sktab-shop">
-    <div class="card">
-      <div class="card-title">Shop Stock Levels</div>
-      <div id="stockShop"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Manual Stock Adjustment</div>
-      <div class="form-row">
-        <div class="form-group"><label>Product</label><select id="adj_shop_product"></select></div>
-        <div class="form-group"><label>Adjust Qty (+ or -)</label><input type="number" id="adj_shop_qty" step="1" value="0"></div>
-        <div class="form-group"><label>Reason</label><input type="text" id="adj_shop_reason" placeholder="e.g. New batch, breakage"></div>
-      </div>
-      <div class="flex-end"><button class="btn btn-primary" onclick="adjustStock('shop')">Apply Adjustment</button></div>
-    </div>
-  </div>
-
-  <div class="tab-pane" id="sktab-pp">
-    <div class="card">
-      <div class="card-title">Pottery Painting Stock Levels</div>
-      <div id="stockPP"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Manual Stock Adjustment</div>
-      <div class="form-row">
-        <div class="form-group"><label>Product</label><select id="adj_pp_product"></select></div>
-        <div class="form-group"><label>Adjust Qty (+ or -)</label><input type="number" id="adj_pp_qty" step="1" value="0"></div>
-        <div class="form-group"><label>Reason</label><input type="text" id="adj_pp_reason" placeholder="e.g. New batch, breakage"></div>
-      </div>
-      <div class="flex-end"><button class="btn btn-primary" onclick="adjustStock('pp')">Apply Adjustment</button></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════ QUOTE ESTIMATOR ══════════════ -->
-<div class="page" id="page-quote">
-  <div class="section-title">Custom Quote Estimator</div>
-  <div class="section-sub">Estimate pricing for bespoke pieces using finished dimensions.</div>
-
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
-    <div>
-      <div class="card">
-        <div class="card-title">Piece Dimensions & Details</div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Clay Type</label>
-            <select id="q_clay_type" onchange="calcQuote()"><option value="white">White Clay</option><option value="terra">Terracotta</option></select>
-          </div>
-          <div class="form-group">
-            <label>Shape</label>
-            <select id="q_shape" onchange="calcQuote()">
-              <option value="cylinder">Cylinder (mug, vase, cup)</option>
-              <option value="sphere">Sphere / Bowl (hemisphere)</option>
-              <option value="slab">Slab / Tile / Plate (flat)</option>
-              <option value="custom">Custom (enter weight directly)</option>
-            </select>
-          </div>
-          <div class="form-group" id="q_dim_d_wrap">
-            <label>Diameter (cm)</label>
-            <input type="number" id="q_diameter" step="0.5" value="10" oninput="calcQuote()">
-          </div>
-          <div class="form-group" id="q_dim_h_wrap">
-            <label>Height (cm)</label>
-            <input type="number" id="q_height" step="0.5" value="12" oninput="calcQuote()">
-          </div>
-          <div class="form-group" id="q_dim_l_wrap" style="display:none">
-            <label>Length (cm)</label>
-            <input type="number" id="q_length" step="0.5" value="20" oninput="calcQuote()">
-          </div>
-          <div class="form-group" id="q_dim_w_wrap" style="display:none">
-            <label>Width (cm)</label>
-            <input type="number" id="q_width" step="0.5" value="15" oninput="calcQuote()">
-          </div>
-          <div class="form-group" id="q_dim_t_wrap" style="display:none">
-            <label>Thickness (cm)</label>
-            <input type="number" id="q_thickness" step="0.1" value="1" oninput="calcQuote()">
-          </div>
-          <div class="form-group" id="q_custom_weight_wrap" style="display:none">
-            <label>Clay Weight (g)</label>
-            <input type="number" id="q_custom_weight" step="10" oninput="calcQuote()">
-          </div>
-          <div class="form-group">
-            <label>Wall Thickness (cm)</label>
-            <input type="number" id="q_wall" step="0.1" value="0.8" oninput="calcQuote()" id="q_wall">
-          </div>
-          <div class="form-group">
-            <label>Glaze Weight (g)</label>
-            <input type="number" id="q_glaze_g" step="5" value="30" oninput="calcQuote()">
-          </div>
-          <div class="form-group">
-            <label>Firing</label>
-            <select id="q_firing" onchange="calcQuote()">
-              <option value="both">Bisque + Glaze</option>
-              <option value="bisque">Bisque Only</option>
-              <option value="glaze">Glaze Only</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Kiln Capacity (items)</label>
-            <input type="number" id="q_kiln_cap" step="1" value="20" oninput="calcQuote()">
-          </div>
-          <div class="form-group">
-            <label>Complexity (1×–3×)</label>
-            <input type="number" id="q_complexity" step="0.1" value="1" min="1" max="3" oninput="calcQuote()">
-            <span class="inline-calc">1 = simple, 2 = moderate, 3 = highly detailed</span>
-          </div>
-          <div class="form-group">
-            <label>Markup %</label>
-            <input type="number" id="q_markup" step="5" value="1000" oninput="calcQuote()">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <div class="quote-result" id="quoteResult">
-        <div class="qlabel">Estimated Selling Price</div>
-        <div class="qprice" id="qPrice">USD —</div>
-        <div class="qsub" id="qSub">Fill in dimensions to calculate</div>
-      </div>
-
-      <div class="card" style="margin-top:1rem;">
-        <div class="card-title">Cost Breakdown</div>
-        <div id="quoteBreakdown" class="cost-breakdown"></div>
-      </div>
-
-      <div class="card" style="margin-top:1rem;background:var(--sand);">
-        <div class="card-title" style="font-size:1rem;">💡 How Clay Weight is Estimated</div>
-        <p style="font-size:0.8rem;color:var(--ash);line-height:1.6;">
-          Clay volume is calculated from the outer dimensions minus the hollow interior (based on wall thickness). 
-          Clay density is assumed at <strong>1.9 g/cm³</strong> (typical for earthenware / stoneware). 
-          Shrinkage factor of <strong>12%</strong> is added (wet clay shrinks when fired). 
-          For custom shapes, switch to "Custom" mode to enter weight directly.
-        </p>
-        <div id="qDimNote" style="margin-top:0.7rem;font-size:0.82rem;color:var(--earth);font-weight:500;"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══════════════ EDIT PRODUCT MODAL ══════════════ -->
-<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div class="modal-title">Edit Product</div>
-      <button class="modal-close" onclick="closeEditModal()">✕</button>
-    </div>
-    <input type="hidden" id="edit_type">
-    <input type="hidden" id="edit_id">
-    <div class="form-grid wide">
-      <div class="form-group"><label>Product Name</label><input type="text" id="edit_name"></div>
-      <div class="form-group"><label>Clay Type</label><select id="edit_clay_type" onchange="calcEditPreview()"><option value="white">White Clay</option><option value="terra">Terracotta</option></select></div>
-      <div class="form-group"><label>Clay Weight (g)</label><input type="number" id="edit_clay" step="1" oninput="calcEditPreview()"></div>
-      <div class="form-group"><label>Plaster Weight (g)</label><input type="number" id="edit_plaster" step="1" oninput="calcEditPreview()"></div>
-      <div class="form-group"><label>Glaze Weight (g)</label><input type="number" id="edit_glaze" step="1" oninput="calcEditPreview()"></div>
-      <div class="form-group"><label>Bisque Kiln Capacity (items)</label><input type="number" id="edit_bisque_cap" step="1" oninput="calcEditPreview()"></div>
-      <div class="form-group"><label>Glaze Kiln Capacity (items)</label><input type="number" id="edit_glaze_cap" step="1" oninput="calcEditPreview()"></div>
-      <div class="form-group"><label>Markup %</label><input type="number" id="edit_markup" step="1" oninput="calcEditPreview()"></div>
-      <div class="form-group"><label>Other Expenses (USD)</label><input type="number" id="edit_other" step="0.01" value="0" oninput="calcEditPreview()"><span class="inline-calc">Additional per-piece costs</span></div>
-      <div class="form-group"><label>Stock Qty</label><input type="number" id="edit_qty" step="1"></div>
-    </div>
-    <div id="editPreview" class="cost-breakdown" style="margin: 1rem 0;"></div>
-    <div class="flex-end">
-      <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEditProduct()">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-
 <!-- ══════════════ CASH FLOAT ══════════════ -->
-<div class="page" id="page-float">
+<div class="page owner-only" id="page-float">
   <div class="section-title">Cash Float</div>
   <div class="section-sub">Track cash going in and out of the studio float. Balance updates automatically.</div>
 
@@ -1344,7 +1245,7 @@
       <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="saleEdit_cost" step="0.01" value="0" oninput="calcSaleEditTotal()"></div>
       <div class="form-group"><label>Discount (USD)</label><input type="number" id="saleEdit_disc" step="0.01" value="0" oninput="calcSaleEditTotal()"></div>
       <div class="form-group"><label>Total (auto)</label><input type="text" id="saleEdit_total" readonly style="background:var(--sand);font-weight:600;"></div>
-      <div class="form-group"><label>Profit (auto)</label><input type="text" id="saleEdit_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
+      <div class="form-group owner-only"><label>Profit (auto)</label><input type="text" id="saleEdit_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
       <div class="form-group"><label>Notes</label><input type="text" id="saleEdit_notes"></div>
     </div>
     <div class="flex-end" style="margin-top:1rem;">
@@ -1354,6 +1255,31 @@
   </div>
 </div>
 
+
+<!-- ══════════════ ORDER PAYMENT MODAL ══════════════ -->
+<div class="modal-overlay" id="orderPayModal" onclick="if(event.target===this)closeOrderPay()">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">Order Payments</div>
+      <button class="modal-close" onclick="closeOrderPay()">✕</button>
+    </div>
+    <input type="hidden" id="op_id">
+    <div id="op_summary" style="background:var(--sand);border-radius:8px;padding:0.7rem 0.9rem;font-size:0.85rem;margin-bottom:1rem;"></div>
+    <div class="form-grid wide">
+      <div class="form-group"><label>Payment Amount (USD)</label><input type="number" id="op_amount" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="form-group"><label>Payment Date</label><input type="date" id="op_date"></div>
+      <div class="form-group"><label>Payment Type</label><select id="op_type" onchange="document.getElementById('op_other_group').style.display=this.value==='other'?'':'none'"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option><option value="other">📝 Other</option></select></div>
+      <div class="form-group" id="op_other_group" style="display:none;"><label>Payment Description (Other)</label><input type="text" id="op_other"></div>
+      <div class="form-group"><label>Due Date</label><input type="date" id="op_due" data-nodefault></div>
+    </div>
+    <div style="font-size:0.74rem;color:var(--ash);margin-top:0.4rem;">Leave the amount blank to only change the due date. Cash payments are added to the Cash Float automatically; Ecocash payments carry the 1.7% fee.</div>
+    <div id="op_history" style="margin-top:1rem;"></div>
+    <div class="flex-end" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeOrderPay()">Close</button>
+      <button class="btn btn-primary" onclick="saveOrderPayment()">Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════ VOUCHER EDIT MODAL ══════════════ -->
 <div class="modal-overlay" id="voucherEditModal" onclick="if(event.target===this)closeVoucherEdit()">
@@ -1392,6 +1318,7 @@ const KEYS = {
   snapshots:'klay_snapshots',
   float:    'klay_float',
   vouchers: 'klay_vouchers',
+  bookings: 'klay_bookings',
 };
 
 // ══════════════════════════════════════════
@@ -1422,6 +1349,7 @@ const TAB_MAP = {
   klay_expenses:       'Expenses',
   klay_float:          'Float',
   klay_vouchers:       'Vouchers',
+  klay_bookings:       'Bookings',
 };
 
 // Virtual keys that are assembled from sub-keys
@@ -1851,7 +1779,7 @@ async function pushAllToSheets() {
   _cache['klay_products_pp']   = rawProducts.pp   || [];
 
   // Load all other keys directly from localStorage into cache
-  ['klay_costs','klay_expenses','klay_float','klay_vouchers'].forEach(k => {
+  ['klay_costs','klay_expenses','klay_float','klay_vouchers','klay_bookings'].forEach(k => {
     const raw = localStorage.getItem(k);
     if (raw) { try { _cache[k] = JSON.parse(raw); } catch(e) {} }
   });
@@ -1938,6 +1866,7 @@ let EXPENSES = load(KEYS.expenses) || [];
 let SNAPSHOTS = load(KEYS.snapshots) || [];
 let FLOAT = load(KEYS.float) || [];
 let VOUCHERS = load(KEYS.vouchers) || [];
+let BOOKINGS = load(KEYS.bookings) || [];
 // Migrate old vouchers that don't have balance field
 VOUCHERS.forEach(v => { if (v.balance === undefined) v.balance = v.used ? 0 : v.amount; if (!v.originalAmount) v.originalAmount = v.amount; });
 
@@ -2000,18 +1929,18 @@ function showAlert(msg, type='success') {
 //  NAV
 // ══════════════════════════════════════════
 function showPage(id) {
+  // The shop-assistant login can only ever see the POS page.
+  if (typeof isAssistant === 'function' && isAssistant() && id !== 'pos') id = 'pos';
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  const btns = document.querySelectorAll('.nav-btn');
-  btns.forEach(b => { if (b.textContent.toLowerCase().includes(id.slice(0,4))) b.classList.add('active'); });
+  document.querySelectorAll('.nav-btn').forEach(b => { if (b.dataset.page === id) b.classList.add('active'); });
   if (id === 'dashboard') renderDashboard();
-  if (id === 'stock') { renderStock(); populateStockAdjusts(); }
-  if (id === 'sales') { populateSalesDropdowns(); renderAllSalesLogs(); populateVoucherDropdowns(); }
+  if (id === 'pos') { populateSalesDropdowns(); renderAllSalesLogs(); populateVoucherDropdowns(); renderBookings(); }
+  if (id === 'orders') renderCustomOrders();
   if (id === 'costs') renderCostsSummary();
   if (id === 'products') { renderCatalogue('shop'); renderCatalogue('pp'); }
   if (id === 'expenses') { ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); }); }
-  if (id === 'quote') calcQuote();
   if (id === 'float') renderFloat();
 }
 
@@ -2026,15 +1955,15 @@ function switchProductTab(tab) {
 function switchSalesTab(tab) {
   document.querySelectorAll('[id^="stab-"]').forEach(t => t.classList.remove('active'));
   document.getElementById('stab-' + tab).classList.add('active');
-  document.querySelectorAll('#page-sales .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#possub-sales .tab-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
 }
 
-function switchStockTab(tab) {
-  document.querySelectorAll('[id^="sktab-"]').forEach(t => t.classList.remove('active'));
-  document.getElementById('sktab-' + tab).classList.add('active');
-  document.querySelectorAll('#page-stock .tab-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+function switchPosSub(sub) {
+  document.querySelectorAll('.pos-sub').forEach(t => t.classList.remove('active'));
+  document.getElementById('possub-' + sub).classList.add('active');
+  document.querySelectorAll('#page-pos .pos-bar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.pos === sub));
+  if (sub === 'bookings') renderBookings();
 }
 
 function switchExpenseTab(tab) {
@@ -2290,14 +2219,16 @@ function populateSalesDropdowns() {
     if (!sel) return;
     const was = sel.value;
     sel.innerHTML = '<option value="">— Select —</option>' +
-      PRODUCTS.shop.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      PRODUCTS.shop.map(p => `<option value="${p.id}">${p.name}</option>`).join('') +
+      (sel.id === 'is_product' ? '<option value="other">✳️ Other (not in products)</option>' : '');
     sel.value = was;
   });
   [ppSelect, adjPP].forEach(sel => {
     if (!sel) return;
     const was = sel.value;
     sel.innerHTML = '<option value="">— Select —</option>' +
-      PRODUCTS.pp.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      PRODUCTS.pp.map(p => `<option value="${p.id}">${p.name}</option>`).join('') +
+      (sel.id === 'pp_product' ? '<option value="other">✳️ Other (not in products)</option>' : '');
     sel.value = was;
   });
   // Wholesale can pick from either catalogue
@@ -2324,7 +2255,20 @@ function fillWholesaleFromProduct() {
   calcSaleTotal('wh');
 }
 
+function isOtherSel(px) {
+  const el = document.getElementById(px + '_product');
+  return !!el && el.value === 'other';
+}
+function toggleOtherFields(px) {
+  const on = isOtherSel(px);
+  const g1 = document.getElementById(px + '_other_group');
+  const g2 = document.getElementById(px + '_othercost_group');
+  if (g1) g1.style.display = on ? '' : 'none';
+  if (g2) g2.style.display = on ? '' : 'none';
+}
+
 function fillInstorePrice() {
+  toggleOtherFields('is');
   const id = parseInt(document.getElementById('is_product').value);
   const prod = PRODUCTS.shop.find(p => p.id === id);
   if (prod) {
@@ -2335,6 +2279,7 @@ function fillInstorePrice() {
 }
 
 function fillPPPrice() {
+  toggleOtherFields('pp');
   const id = parseInt(document.getElementById('pp_product').value);
   const prod = PRODUCTS.pp.find(p => p.id === id);
   if (prod) {
@@ -2357,11 +2302,15 @@ function calcSaleTotal(prefix) {
   if (totalEl) totalEl.value = fmt(total);
 
   const payType = document.getElementById(prefix+'_paytype')?.value || 'cash';
-  const ecocashFee = payType === 'ecocash' ? total * ECOCASH_FEE_RATE : 0;
+  let feeBase = total;
+  if (prefix === 'cu') { const pn = document.getElementById('cu_paidnow')?.value; if (pn !== '' && pn != null) feeBase = Math.max(0, Math.min(parseFloat(pn) || 0, total)); }
+  const ecocashFee = payType === 'ecocash' ? feeBase * ECOCASH_FEE_RATE : 0;
   const feeEl = document.getElementById(prefix+'_fee');
   const feeGroupEl = document.getElementById(prefix+'_fee_group');
   if (feeEl) feeEl.value = fmt(ecocashFee);
   if (feeGroupEl) feeGroupEl.style.display = payType === 'ecocash' ? '' : 'none';
+  const payOtherGroup = document.getElementById(prefix+'_payother_group');
+  if (payOtherGroup) payOtherGroup.style.display = payType === 'other' ? '' : 'none';
 
   const profitEl = document.getElementById(prefix+'_profit');
   if (profitEl) {
@@ -2369,11 +2318,13 @@ function calcSaleTotal(prefix) {
     if (prefix === 'is') {
       const id = parseInt(document.getElementById('is_product').value);
       const prod = PRODUCTS.shop.find(p => p.id === id);
-      if (prod) cost = calcProductCost(prod).total * qty;
+      if (isOtherSel('is')) cost = (parseFloat(document.getElementById('is_other_cost')?.value) || 0) * qty;
+      else if (prod) cost = calcProductCost(prod).total * qty;
     } else if (prefix === 'pp') {
       const id = parseInt(document.getElementById('pp_product').value);
       const prod = PRODUCTS.pp.find(p => p.id === id);
-      if (prod) cost = calcProductCost(prod).total * qty;
+      if (isOtherSel('pp')) cost = (parseFloat(document.getElementById('pp_other_cost')?.value) || 0) * qty;
+      else if (prod) cost = calcProductCost(prod).total * qty;
     } else if (prefix === 'ws') {
       const costPP = parseFloat(document.getElementById('ws_cost')?.value) || 0;
       cost = costPP * qty;
@@ -2402,6 +2353,13 @@ function addSale(stream) {
   };
   const date = document.getElementById(dateMap[stream]).value;
   if (!date) { showAlert('Please enter a date.','error'); return; }
+  {
+    const _px = prefixMap[stream];
+    const _pt = document.getElementById(_px + '_paytype')?.value || 'cash';
+    if (_pt === 'other' && !(document.getElementById(_px + '_payother')?.value || '').trim()) {
+      showAlert('Please describe the "Other" payment method.', 'error'); return;
+    }
+  }
 
   let sale = { id: Date.now(), date };
 
@@ -2412,10 +2370,15 @@ function addSale(stream) {
     const price = parseFloat(document.getElementById('is_price').value) || 0;
     const disc  = parseFloat(document.getElementById('is_disc').value)  || 0;
     const total = price * qty - disc;
-    const cost  = prod ? calcProductCost(prod).total * qty : 0;
+    const isOther = isOtherSel('is');
+    const otherUnitCost = isOther ? (parseFloat(document.getElementById('is_other_cost')?.value) || 0) : 0;
+    const cost  = isOther ? otherUnitCost * qty : (prod ? calcProductCost(prod).total * qty : 0);
     const isVoucher = document.getElementById('is_voucher')?.value || '';
-    sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('is_desc').value,
+    sale = { ...sale, productId: isOther ? null : prodId,
+      productName: isOther ? ((document.getElementById('is_other_name')?.value || '').trim() || 'Other') : (prod?.name||''),
+      desc: document.getElementById('is_desc').value,
       price, qty, disc, total, cost, profit: total - cost, voucherCode: isVoucher };
+    if (isOther) { sale.isOther = true; sale.unitCost = otherUnitCost; }
     if (isVoucher) {
       const isApplyEl = document.getElementById('is_voucher_apply');
       const isDiscVal = parseFloat(document.getElementById('is_disc')?.value) || 0;
@@ -2425,6 +2388,8 @@ function addSale(stream) {
     ['is_date','is_product','is_desc','is_price','is_disc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     document.getElementById('is_qty').value = 1;
     document.getElementById('is_disc').value = 0;
+    { const n = document.getElementById('is_other_name'); if (n) n.value = ''; const c = document.getElementById('is_other_cost'); if (c) c.value = 0; }
+    toggleOtherFields('is');
     document.getElementById('is_total').value = '';
     document.getElementById('is_profit').value = '';
     document.getElementById('is_voucher').value = '';
@@ -2439,10 +2404,15 @@ function addSale(stream) {
     const price = parseFloat(document.getElementById('pp_price').value) || 0;
     const disc  = parseFloat(document.getElementById('pp_disc').value)  || 0;
     const total = price * qty - disc;
-    const cost  = prod ? calcProductCost(prod).total * qty : 0;
+    const isOther = isOtherSel('pp');
+    const otherUnitCost = isOther ? (parseFloat(document.getElementById('pp_other_cost')?.value) || 0) : 0;
+    const cost  = isOther ? otherUnitCost * qty : (prod ? calcProductCost(prod).total * qty : 0);
     const ppVoucher = document.getElementById('pp_voucher')?.value || '';
-    sale = { ...sale, productId: prodId, productName: prod?.name||'', desc: document.getElementById('pp_desc').value,
+    sale = { ...sale, productId: isOther ? null : prodId,
+      productName: isOther ? ((document.getElementById('pp_other_name')?.value || '').trim() || 'Other') : (prod?.name||''),
+      desc: document.getElementById('pp_desc').value,
       price, qty, disc, total, cost, profit: total - cost, voucherCode: ppVoucher };
+    if (isOther) { sale.isOther = true; sale.unitCost = otherUnitCost; }
     if (ppVoucher) {
       const ppApplyEl = document.getElementById('pp_voucher_apply');
       const ppDiscVal = parseFloat(document.getElementById('pp_disc')?.value) || 0;
@@ -2451,6 +2421,7 @@ function addSale(stream) {
     if (prod) { prod.qty = Math.max(0, (prod.qty||0) - qty); save(KEYS.products, PRODUCTS); }
     document.getElementById('pp_qty2').value = 1;
     document.getElementById('pp_disc').value = 0;
+    { const n = document.getElementById('pp_other_name'); if (n) n.value = ''; const c = document.getElementById('pp_other_cost'); if (c) c.value = 0; }
     document.getElementById('pp_total').value = '';
     document.getElementById('pp_profit').value = '';
     document.getElementById('pp_voucher').value = '';
@@ -2564,16 +2535,28 @@ function addSale(stream) {
     const _clva = document.getElementById('cl_voucher_apply'); if(_clva) _clva.value='';
   }
 
-  // ── Payment type: Cash vs Ecocash ──────────────────────────────
+  // ── Payment type: Cash / Ecocash / Other ──────────────────────
   // Ecocash carries a 1.7% transaction fee, which comes off profit (the
-  // customer still pays the full Total — the fee is a cost of accepting
-  // mobile money, not a discount). Cash sales get their full amount
-  // automatically logged into the Cash Float ("cash box") as an income
-  // transaction, since that money is physically in the till.
+  // customer still pays the full amount — the fee is a cost of accepting
+  // mobile money, not a discount). Cash payments are logged automatically
+  // into the Cash Float ("cash box") since that money is physically in the till.
+  // "Other" payments record a free-text description and touch neither the
+  // fee nor the cash box.
+  // Custom orders may be part-paid: only the amount paid now is counted as a
+  // payment (the balance is tracked on the Custom Orders page).
   const prefix = prefixMap[stream];
   const payType = document.getElementById(prefix + '_paytype')?.value || 'cash';
-  const ecocashFee = payType === 'ecocash' ? Math.round(sale.total * ECOCASH_FEE_RATE * 100) / 100 : 0;
+  const payNote = payType === 'other' ? (document.getElementById(prefix + '_payother')?.value || '').trim() : '';
+  let paidAmt = sale.total;
+  if (stream === 'custom') {
+    const pn = document.getElementById('cu_paidnow')?.value;
+    paidAmt = (pn === '' || pn == null) ? sale.total : Math.max(0, Math.min(parseFloat(pn) || 0, sale.total));
+    sale.dueDate = document.getElementById('cu_due')?.value || '';
+    sale.payments = paidAmt > 0 ? [{ id: sale.id + 2, date, amount: paidAmt, type: payType, note: payNote }] : [];
+  }
+  const ecocashFee = payType === 'ecocash' ? Math.round(paidAmt * ECOCASH_FEE_RATE * 100) / 100 : 0;
   sale.paymentType = payType;
+  if (payNote) sale.paymentNote = payNote;
   sale.ecocashFee  = ecocashFee;
   sale.profit      = (sale.profit || 0) - ecocashFee;
 
@@ -2584,24 +2567,31 @@ function addSale(stream) {
   if (feeEl) feeEl.value = '';
   const feeGroupEl = document.getElementById(prefix + '_fee_group');
   if (feeGroupEl) feeGroupEl.style.display = 'none';
+  const poEl = document.getElementById(prefix + '_payother'); if (poEl) poEl.value = '';
+  const poGroup = document.getElementById(prefix + '_payother_group'); if (poGroup) poGroup.style.display = 'none';
+  if (stream === 'custom') {
+    const pn = document.getElementById('cu_paidnow'); if (pn) pn.value = '';
+    const du = document.getElementById('cu_due'); if (du) du.value = '';
+  }
 
   SALES[stream].push(sale);
   save(KEYS.sales, SALES);
 
-  if (payType === 'cash' && sale.total > 0) {
+  if (payType === 'cash' && paidAmt > 0) {
     const label = sale.productName || sale.cat || sale.desc || '';
+    const partial = stream === 'custom' && paidAmt < sale.total;
     FLOAT.push({
-      id: sale.id + 1, date, type: 'in', amount: sale.total,
-      desc: `${streamLabels[stream]} sale${label ? ' — ' + label : ''} (cash)`,
-      auto: true, saleId: sale.id, saleStream: stream
+      id: sale.id + 1, date, type: 'in', amount: paidAmt,
+      desc: `${streamLabels[stream]} ${partial ? 'deposit' : 'sale'}${label ? ' — ' + label : ''} (cash)`,
+      auto: true, saleId: sale.id, saleStream: stream,
+      ...(stream === 'custom' && sale.payments && sale.payments[0] ? { paymentId: sale.payments[0].id } : {})
     });
     save(KEYS.float, FLOAT);
     renderFloat();
   }
 
   renderSalesLog(stream);
-  renderCatalogue('shop');
-  renderCatalogue('pp');
+  if (!isAssistant()) { renderCatalogue('shop'); renderCatalogue('pp'); }
   showAlert('Sale recorded!');
 }
 
@@ -2635,6 +2625,13 @@ function renderSalesLog(stream) {
   populateSalesMonthFilter(stream);
   const el = document.getElementById('slog-' + stream);
   if (!el) return;
+  if (isAssistant()) {
+    // Shop assistant: only today's entries, what was sold and how it was paid — no prices, totals or profit.
+    const today = new Date().toISOString().slice(0, 10);
+    const mine = (SALES[stream] || []).filter(x => x.date === today).sort((a, b) => b.id - a.id);
+    el.innerHTML = mine.length ? `<div class="table-wrap"><table><thead><tr><th>Item / Client</th><th>Description</th><th class="num">Qty</th><th>Payment</th></tr></thead><tbody>${mine.map(x => `<tr><td>${esc(x.productName || x.cat || '—')}</td><td>${esc(x.desc || '—')}</td><td class="num">${x.qty}</td><td>${x.paymentType === 'ecocash' ? '📱 Ecocash' : x.paymentType === 'other' ? '📝 ' + esc(x.paymentNote || 'Other') : '💵 Cash'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state"><div class="ei">📋</div>Nothing logged today yet.</div>';
+    return;
+  }
   const sel = document.getElementById('filter-' + stream);
   const month = sel ? sel.value : 'all';
   let data = [...SALES[stream]].sort((a,b) => b.date.localeCompare(a.date));
@@ -2659,12 +2656,12 @@ function renderSalesLog(stream) {
     <tbody>
       ${data.map(s => `<tr>
         <td>${s.date}</td>
-        <td>${s.productName || s.cat || '—'}</td>
-        <td>${s.desc || '—'}</td>
+        <td>${esc(s.productName || s.cat || '—')}${s.isOther ? ' <span class="badge badge-bisque">Other</span>' : ''}</td>
+        <td>${esc(s.desc || '—')}</td>
         <td class="num">${fmt(s.price)}</td>
         <td class="num">${s.qty}</td>
         <td class="num">${fmt(s.disc)}</td>
-        <td>${s.paymentType === 'ecocash' ? `📱 Ecocash<br><span style="font-size:0.72rem;color:#c04444;">fee ${fmt(s.ecocashFee||0)}</span>` : '💵 Cash'}</td>
+        <td>${s.paymentType === 'ecocash' ? `📱 Ecocash<br><span style="font-size:0.72rem;color:#c04444;">fee ${fmt(s.ecocashFee||0)}</span>` : s.paymentType === 'other' ? `📝 Other<br><span style="font-size:0.72rem;color:var(--ash);">${esc(s.paymentNote||'')}</span>` : '💵 Cash'}</td>
         <td class="num"><strong>${fmt(s.total)}</strong></td>
         <td class="num ${(s.profit||0)>=0?'profit-pos':'profit-neg'}">${fmt(s.profit||0)}</td>
         <td>${s.notes||'—'}</td>
@@ -2685,6 +2682,233 @@ function renderAllSalesLogs() {
   ['instore','pottery','workshop','wholesale','custom','classes'].forEach(renderSalesLog);
   renderVoucherLog();
   populateVoucherDropdowns();
+}
+
+// ══════════════════════════════════════════
+//  CUSTOM ORDERS PAGE
+//  An order's payments live on the sale record (sale.payments). Orders created
+//  before this feature have no payments array and are treated as fully paid,
+//  which matches how they were previously recorded.
+// ══════════════════════════════════════════
+function orderPaid(o) {
+  if (Array.isArray(o.payments)) return o.payments.reduce((n, p) => n + (p.amount || 0), 0);
+  return o.total || 0;
+}
+function orderBalance(o) { return Math.max(0, Math.round(((o.total || 0) - orderPaid(o)) * 100) / 100); }
+
+function renderCustomOrders() {
+  const host = document.getElementById('orderList');
+  if (!host) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const all = (SALES.custom || []).slice();
+  const open = all.filter(o => orderBalance(o) > 0);
+  const overdue = open.filter(o => o.dueDate && o.dueDate < today);
+  const stats = document.getElementById('orderStats');
+  if (stats) stats.innerHTML = `
+    <div class="stat-card"><div class="stat-label">Orders</div><div class="stat-value">${all.length}</div></div>
+    <div class="stat-card"><div class="stat-label">With Balance Due</div><div class="stat-value">${open.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Outstanding</div><div class="stat-value">${fmt(open.reduce((n, o) => n + orderBalance(o), 0))}</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value" style="color:${overdue.length ? '#c04444' : 'inherit'};">${overdue.length}</div></div>`;
+  const filter = document.getElementById('order_filter')?.value || 'open';
+  let list = filter === 'open' ? open : filter === 'settled' ? all.filter(o => orderBalance(o) === 0) : all;
+  list.sort((a, b) => {
+    const ao = orderBalance(a) > 0, bo = orderBalance(b) > 0;
+    if (ao !== bo) return ao ? -1 : 1;                       // outstanding first
+    if (ao) return (a.dueDate || '9999').localeCompare(b.dueDate || '9999'); // soonest due first
+    return (b.date || '').localeCompare(a.date || '');
+  });
+  if (!list.length) { host.innerHTML = '<div class="empty-state"><div class="ei">✏️</div>No custom orders to show.</div>'; return; }
+  host.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Date Ordered</th><th>Client</th><th>Description</th><th>Notes</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Due</th><th>Due Date</th><th></th></tr></thead>
+    <tbody>${list.map(o => {
+      const bal = orderBalance(o), late = bal > 0 && o.dueDate && o.dueDate < today;
+      return `<tr>
+        <td>${esc(o.date)}</td>
+        <td>${esc(o.cat || '—')}</td>
+        <td>${esc(o.desc || '—')}</td>
+        <td>${esc(o.notes || '—')}</td>
+        <td class="num">${fmt(o.total)}</td>
+        <td class="num">${fmt(orderPaid(o))}</td>
+        <td class="num"><strong style="color:${bal > 0 ? '#c04444' : 'var(--glaze-green)'};">${bal > 0 ? fmt(bal) : 'Paid ✓'}</strong></td>
+        <td>${o.dueDate ? esc(o.dueDate) : '—'}${late ? ' <span class="badge" style="background:#f8d7d7;color:#c04444;">Overdue</span>' : ''}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openOrderPay(${o.id})">💳 Payments</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function openOrderPay(id) {
+  const o = SALES.custom.find(x => Number(x.id) === Number(id));
+  if (!o) return;
+  document.getElementById('op_id').value = o.id;
+  document.getElementById('op_amount').value = '';
+  document.getElementById('op_date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('op_type').value = 'cash';
+  document.getElementById('op_other').value = '';
+  document.getElementById('op_other_group').style.display = 'none';
+  document.getElementById('op_due').value = o.dueDate || '';
+  renderOrderPayInfo(o);
+  document.getElementById('orderPayModal').style.display = 'flex';
+}
+function closeOrderPay() { document.getElementById('orderPayModal').style.display = 'none'; }
+
+function renderOrderPayInfo(o) {
+  document.getElementById('op_summary').innerHTML =
+    `<strong>${esc(o.cat || 'Order')}</strong> — ${esc(o.desc || '')}<br>Total ${fmt(o.total)} · Paid ${fmt(orderPaid(o))} · <strong>Due ${fmt(orderBalance(o))}</strong>`;
+  const pays = Array.isArray(o.payments) ? o.payments : [];
+  const h = document.getElementById('op_history');
+  if (!Array.isArray(o.payments)) { h.innerHTML = '<div style="font-size:0.8rem;color:var(--ash);">Recorded before part-payments were tracked — treated as paid in full.</div>'; return; }
+  h.innerHTML = pays.length ? `<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin-bottom:0.4rem;">Payments received</div>` +
+    pays.map(pm => `<div class="cost-row"><span>${esc(pm.date)} · ${pm.type === 'ecocash' ? '📱 Ecocash' : pm.type === 'other' ? '📝 ' + esc(pm.note || 'Other') : '💵 Cash'}</span><span>${fmt(pm.amount)} <button class="btn btn-danger btn-sm" style="margin-left:0.5rem;" onclick="deleteOrderPayment(${o.id},${pm.id})">✕</button></span></div>`).join('')
+    : '<div style="font-size:0.8rem;color:var(--ash);">No payments recorded yet.</div>';
+}
+
+function recalcOrderProfit(o) {
+  const fee = saleEcocashFee(o);
+  o.ecocashFee = fee;
+  o.profit = (o.total || 0) - (o.cost || 0) - fee;
+}
+
+function saveOrderPayment() {
+  const o = SALES.custom.find(x => Number(x.id) === Number(document.getElementById('op_id').value));
+  if (!o) return;
+  o.dueDate = document.getElementById('op_due').value || '';
+  const amt = parseFloat(document.getElementById('op_amount').value) || 0;
+  if (amt > 0) {
+    const type = document.getElementById('op_type').value;
+    const note = type === 'other' ? document.getElementById('op_other').value.trim() : '';
+    if (type === 'other' && !note) { showAlert('Please describe the "Other" payment method.', 'error'); return; }
+    if (!Array.isArray(o.payments)) o.payments = [{ id: o.id + 2, date: o.date, amount: o.total || 0, type: o.paymentType || 'cash', note: o.paymentNote || '' }];
+    const bal = orderBalance(o);
+    if (amt > bal + 0.005 && !confirm(`This is more than the balance due (${fmt(bal)}). Record it anyway?`)) return;
+    const pm = { id: Date.now(), date: document.getElementById('op_date').value || new Date().toISOString().slice(0, 10), amount: amt, type, note };
+    o.payments.push(pm);
+    recalcOrderProfit(o);
+    if (type === 'cash') {
+      FLOAT.push({ id: pm.id + 1, date: pm.date, type: 'in', amount: amt,
+        desc: `Custom Order payment — ${o.cat || o.desc || ''} (cash)`, auto: true, saleId: o.id, paymentId: pm.id, saleStream: 'custom' });
+      save(KEYS.float, FLOAT);
+      renderFloat();
+    }
+  }
+  save(KEYS.sales, SALES);
+  renderCustomOrders();
+  if (amt > 0) { showAlert('Payment recorded.'); openOrderPay(o.id); } else { showAlert('Order updated.'); closeOrderPay(); }
+}
+
+function deleteOrderPayment(orderId, payId) {
+  const o = SALES.custom.find(x => Number(x.id) === Number(orderId));
+  if (!o || !Array.isArray(o.payments)) return;
+  if (!confirm('Remove this payment?')) return;
+  o.payments = o.payments.filter(pm => pm.id !== payId);
+  recalcOrderProfit(o);
+  const before = FLOAT.length;
+  FLOAT = FLOAT.filter(tx => !(tx.auto && tx.saleId === o.id && tx.paymentId === payId));
+  // the first (order-time) payment's cash entry has no paymentId — match it by sale + id offset
+  if (FLOAT.length === before) FLOAT = FLOAT.filter(tx => !(tx.auto && tx.saleId === o.id && payId === o.id + 2 && tx.paymentId === undefined));
+  if (FLOAT.length !== before) { save(KEYS.float, FLOAT); renderFloat(); }
+  save(KEYS.sales, SALES);
+  renderCustomOrders();
+  openOrderPay(o.id);
+}
+
+// ══════════════════════════════════════════
+//  SMALL HELPERS
+// ══════════════════════════════════════════
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+// ══════════════════════════════════════════
+//  BOOKINGS (POS subpage) — pottery painting & classes
+// ══════════════════════════════════════════
+let _editingBookingId = null;
+
+function resetBookingForm() {
+  _editingBookingId = null;
+  ['bk_name','bk_contact','bk_notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const q = document.getElementById('bk_qty'); if (q) q.value = 1;
+  const d = document.getElementById('bk_date'); if (d) d.value = new Date().toISOString().slice(0, 10);
+  const t = document.getElementById('bk_type'); if (t) t.value = 'Pottery Painting';
+  document.getElementById('bkFormTitle').textContent = 'New Booking';
+  document.getElementById('bkSaveBtn').textContent = 'Log Booking';
+  document.getElementById('bkCancelBtn').style.display = 'none';
+}
+
+function saveBooking() {
+  const name = document.getElementById('bk_name').value.trim();
+  const date = document.getElementById('bk_date').value;
+  if (!name) { showAlert('Please enter the name for the booking.', 'error'); return; }
+  if (!date) { showAlert('Please enter the date of the booking.', 'error'); return; }
+  const rec = {
+    name, date,
+    contact: document.getElementById('bk_contact').value.trim(),
+    type:    document.getElementById('bk_type').value,
+    qty:     Math.max(1, parseInt(document.getElementById('bk_qty').value) || 1),
+    notes:   document.getElementById('bk_notes').value.trim(),
+  };
+  if (_editingBookingId) {
+    const b = BOOKINGS.find(x => x.id === _editingBookingId);
+    if (b) Object.assign(b, rec);
+    showAlert('Booking updated.');
+  } else {
+    BOOKINGS.push({ id: Date.now(), created: new Date().toISOString(), ...rec });
+    showAlert('Booking logged!');
+  }
+  save(KEYS.bookings, BOOKINGS);
+  resetBookingForm();
+  renderBookings();
+}
+
+function editBooking(id) {
+  const b = BOOKINGS.find(x => x.id === id);
+  if (!b) return;
+  _editingBookingId = id;
+  document.getElementById('bk_name').value    = b.name || '';
+  document.getElementById('bk_contact').value = b.contact || '';
+  document.getElementById('bk_date').value    = b.date || '';
+  document.getElementById('bk_qty').value     = b.qty || 1;
+  document.getElementById('bk_notes').value   = b.notes || '';
+  document.getElementById('bk_type').value    = b.type || 'Pottery Painting';
+  document.getElementById('bkFormTitle').textContent = 'Edit Booking';
+  document.getElementById('bkSaveBtn').textContent = 'Save Changes';
+  document.getElementById('bkCancelBtn').style.display = '';
+  document.getElementById('bk_name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function deleteBooking(id) {
+  if (!confirm('Delete this booking?')) return;
+  BOOKINGS = BOOKINGS.filter(b => b.id !== id);
+  save(KEYS.bookings, BOOKINGS);
+  if (_editingBookingId === id) resetBookingForm();
+  renderBookings();
+}
+
+function renderBookings() {
+  const el = document.getElementById('bookingLog');
+  if (!el) return;
+  const filter = document.getElementById('bk_filter')?.value || 'upcoming';
+  const today = new Date().toISOString().slice(0, 10);
+  let list = [...BOOKINGS];
+  if (filter === 'upcoming') list = list.filter(b => (b.date || '') >= today).sort((a, b) => a.date.localeCompare(b.date));
+  else if (filter === 'past') list = list.filter(b => (b.date || '') < today).sort((a, b) => b.date.localeCompare(a.date));
+  else list.sort((a, b) => b.date.localeCompare(a.date));
+  const sum = document.getElementById('bkSummary');
+  if (sum) sum.textContent = list.length + ' booking' + (list.length === 1 ? '' : 's') + ' · ' + list.reduce((n, b) => n + (b.qty || 0), 0) + ' people';
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ei">📅</div>No ' + (filter === 'all' ? '' : filter + ' ') + 'bookings.</div>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Type</th><th>Name</th><th>Contact</th><th class="num">Qty</th><th>Notes</th><th></th></tr></thead>
+    <tbody>${list.map(b => `<tr${b.date === today ? ' style="background:var(--sand);"' : ''}>
+      <td>${esc(b.date)}${b.date === today ? ' <span class="badge badge-bisque">Today</span>' : ''}</td>
+      <td>${b.type === 'Class' ? '🎓 Class' : '🎨 Pottery Painting'}</td>
+      <td>${esc(b.name)}</td>
+      <td>${esc(b.contact || '—')}</td>
+      <td class="num">${b.qty}</td>
+      <td>${esc(b.notes || '—')}</td>
+      <td style="display:flex;gap:0.3rem;"><button class="btn btn-ghost btn-sm" onclick="editBooking(${b.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})">✕</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
 }
 
 // ══════════════════════════════════════════
@@ -2905,50 +3129,8 @@ function renderExpenses(section) {
 // ══════════════════════════════════════════
 //  STOCK
 // ══════════════════════════════════════════
-function renderStock() {
-  ['shop','pp'].forEach(type => {
-    const el = document.getElementById('stock' + (type==='shop'?'Shop':'PP'));
-    if (!el) return;
-    const products = PRODUCTS[type];
-    if (!products.length) {
-      el.innerHTML = '<div class="empty-state"><div class="ei">📦</div>No products in catalogue yet.</div>';
-      return;
-    }
-    el.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Product</th><th>Selling Price</th><th>Current Stock</th><th>Status</th></tr></thead>
-      <tbody>
-        ${products.map(prod => {
-          const sp = calcProductCost(prod).sellingPrice;
-          const low = prod.qty <= 3;
-          return `<tr>
-            <td><strong>${prod.name}</strong></td>
-            <td class="num">${fmt(sp)}</td>
-            <td class="num ${low?'low-stock':'ok-stock'}">${prod.qty}</td>
-            <td><span class="badge ${low?'badge-clay':'badge-green'}">${low?'Low Stock':'In Stock'}</span></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table></div>`;
-  });
-}
-
 function populateStockAdjusts() {
   populateSalesDropdowns();
-}
-
-function adjustStock(type) {
-  const sel = document.getElementById(`adj_${type}_product`);
-  const qtyEl = document.getElementById(`adj_${type}_qty`);
-  const id = parseInt(sel.value);
-  const qty = parseInt(qtyEl.value) || 0;
-  const prod = PRODUCTS[type].find(p => p.id === id);
-  if (!prod) { showAlert('Select a product.','error'); return; }
-  prod.qty = Math.max(0, (prod.qty||0) + qty);
-  save(KEYS.products, PRODUCTS);
-  renderStock();
-  renderCatalogue(type);
-  qtyEl.value = 0;
-  showAlert(`Stock adjusted: ${prod.name} now ${prod.qty} units.`);
 }
 
 // ══════════════════════════════════════════
@@ -3025,7 +3207,24 @@ function getAllTimeData() {
   };
 }
 
+// Workshops / Wholesale are no longer sold from the POS. Their rows only appear
+// on the dashboard if historical records exist, so old figures are never hidden.
+function legacyStreamsHaveData() {
+  return (SALES.workshop && SALES.workshop.length > 0) || (SALES.wholesale && SALES.wholesale.length > 0);
+}
+
+function populateAllTimeMonthSelect() {
+  const sel = document.getElementById('dashAllTimeMonth');
+  if (!sel) return 'all';
+  const prev = sel.value || 'all';
+  sel.innerHTML = '<option value="all">All time</option>' +
+    getAllMonths().map(m => `<option value="${m}">${monthLabel(m)}</option>`).join('');
+  sel.value = [...sel.options].some(o => o.value === prev) ? prev : 'all';
+  return sel.value;
+}
+
 function renderDashboard() {
+  if (typeof isAssistant === 'function' && isAssistant()) return; // POS-only users never get revenue rendered
   populateDashMonthSelect();
   const sel = document.getElementById('dashMonthSelect');
   const month = sel.value || currentYearMonth();
@@ -3049,8 +3248,8 @@ function renderDashboard() {
     <div class="cost-breakdown">
       <div class="cost-row"><span>🏪 In-Store Sales</span><span>${fmt(d.revInstore)}</span></div>
       <div class="cost-row"><span>🎨 Pottery Painting</span><span>${fmt(d.revPottery)}</span></div>
-      <div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(d.revWorkshop)}</span></div>
-      <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(d.revWholesale)}</span></div>
+      ${legacyStreamsHaveData() ? `<div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(d.revWorkshop)}</span></div>
+      <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(d.revWholesale)}</span></div>` : ''}
       <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(d.revCustom)}</span></div>
       <div class="cost-row"><span>🎓 Classes</span><span>${fmt(d.revClasses)}</span></div>
       <div class="cost-row total"><span>Total</span><span>${fmt(d.totalRevenue)}</span></div>
@@ -3078,8 +3277,13 @@ function renderDashboard() {
     </div>
   ` : '<div class="empty-state" style="padding:1rem;"><div style="font-size:0.85rem;color:var(--ash);">No capital reinvestment recorded this month.</div></div>';
 
-  // All-time summary
-  const at = getAllTimeData();
+  // All-time summary (optionally filtered to a single month)
+  const atMonth = populateAllTimeMonthSelect();
+  const at = atMonth === 'all' ? getAllTimeData() : getMonthData(atMonth);
+  const atTitle = document.getElementById('dashAllTimeTitle');
+  const atSub   = document.getElementById('dashAllTimeSub');
+  if (atTitle) atTitle.textContent = atMonth === 'all' ? '📊 All-Time Summary' : '📊 Summary — ' + monthLabel(atMonth);
+  if (atSub)   atSub.textContent   = atMonth === 'all' ? 'from first entry to today' : 'filtered to this month';
   const atEl = document.getElementById('dashAllTime');
   if (atEl) {
     atEl.innerHTML = `
@@ -3089,7 +3293,7 @@ function renderDashboard() {
         <div class="stat-card green"><div class="stat-label">Gross Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.grossProfit)}</div></div>
         <div class="stat-card red"><div class="stat-label">Overhead Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.overheadExp)}</div></div>
         <div class="stat-card red"><div class="stat-label">Variable Expenses</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.variableExp)}</div></div>
-        <div class="stat-card ${at.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.netProfit)}</div><div class="stat-sub">${at.netProfit>=0?'✓ Overall profitable':'↓ Overall loss'}</div></div>
+        <div class="stat-card ${at.netProfit>=0?'green':'red'}"><div class="stat-label">Net Profit</div><div class="stat-value" style="font-size:1.35rem;">${fmt(at.netProfit)}</div><div class="stat-sub">${at.netProfit>=0?(atMonth==='all'?'✓ Overall profitable':'✓ Profitable'):(atMonth==='all'?'↓ Overall loss':'↓ Loss')}</div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;flex-wrap:wrap;">
         <div>
@@ -3097,8 +3301,8 @@ function renderDashboard() {
           <div class="cost-breakdown">
             <div class="cost-row"><span>🏪 In-Store Sales</span><span>${fmt(at.revInstore)}</span></div>
             <div class="cost-row"><span>🎨 Pottery Painting</span><span>${fmt(at.revPottery)}</span></div>
-            <div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(at.revWorkshop)}</span></div>
-            <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(at.revWholesale)}</span></div>
+            ${legacyStreamsHaveData() ? `<div class="cost-row"><span>🧑‍🎨 Workshops</span><span>${fmt(at.revWorkshop)}</span></div>
+            <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(at.revWholesale)}</span></div>` : ''}
             <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(at.revCustom)}</span></div>
             <div class="cost-row"><span>🎓 Classes</span><span>${fmt(at.revClasses)}</span></div>
             <div class="cost-row total"><span>Total Revenue</span><span>${fmt(at.totalRevenue)}</span></div>
@@ -3111,7 +3315,7 @@ function renderDashboard() {
             <div class="cost-row"><span>📦 Variable</span><span>${fmt(at.variableExp)}</span></div>
             <div class="cost-row total"><span>Total Operating</span><span>${fmt(at.operatingExp)}</span></div>
           </div>
-          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin:0.8rem 0 0.5rem;">Capital Reinvestment (all time)</div>
+          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin:0.8rem 0 0.5rem;">Capital Reinvestment (${atMonth==='all'?'all time':monthLabel(atMonth)})</div>
           <div class="cost-breakdown">
             <div class="cost-row"><span>🔧 Capital Invested</span><span style="font-weight:600;">${fmt(at.capitalExp)}</span></div>
             <div style="font-size:0.75rem;color:var(--ash);margin-top:0.4rem;font-style:italic;">Not included in profit calculation</div>
@@ -3121,6 +3325,157 @@ function renderDashboard() {
     `;
   }
 
+  renderMonthlyChart();
+}
+
+// ══════════════════════════════════════════
+//  MONTHLY PERFORMANCE CHART (income / expenses / profit)
+//  Income   = total revenue for the month
+//  Profit   = net profit (same figure as the dashboard's Net Profit card)
+//  Expenses = Income − Profit, i.e. cost of goods sold + Ecocash fees +
+//             overhead + variable expenses (capital reinvestment excluded,
+//             exactly as in the profit calculation) — so the three always agree.
+// ══════════════════════════════════════════
+let _chartShowTable = false;
+
+function chartMonthSeries() {
+  const all = getAllMonths();               // newest first, only months with data (+ current)
+  if (!all.length) return [];
+  const first = all[all.length - 1], last = all[0];
+  let [y, m] = first.split('-').map(Number);
+  const [ly, lm] = last.split('-').map(Number);
+  const months = [];
+  while (y < ly || (y === ly && m <= lm)) {   // contiguous, so quiet months show as empty, not skipped
+    months.push(`${y}-${String(m).padStart(2, '0')}`);
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  const range = document.getElementById('dashChartRange')?.value || '12';
+  const picked = range === 'all' ? months : months.slice(-Number(range));
+  return picked.map(mo => {
+    const d = getMonthData(mo);
+    return { month: mo, income: d.totalRevenue, expenses: d.totalRevenue - d.netProfit, profit: d.netProfit };
+  });
+}
+
+function niceTicks(min, max, target) {
+  if (min === max) { max = min + 1; }
+  const span = max - min;
+  const raw = span / target;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return ticks;
+}
+
+function compactNum(n) {
+  const a = Math.abs(n);
+  if (a >= 1000) return (n / 1000).toFixed(a >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K';
+  return String(Math.round(n));
+}
+
+function toggleChartTable() {
+  _chartShowTable = !_chartShowTable;
+  const b = document.getElementById('dashChartToggle');
+  if (b) b.textContent = _chartShowTable ? 'Chart view' : 'Table view';
+  renderMonthlyChart();
+}
+
+function renderMonthlyChart() {
+  const host = document.getElementById('dashChart');
+  if (!host) return;
+  const data = chartMonthSeries();
+  const hasAny = data.some(r => r.income || r.expenses || r.profit);
+  if (!data.length || !hasAny) {
+    host.innerHTML = '<div class="empty-state" style="padding:1.5rem;">No sales or expenses recorded yet.</div>';
+    return;
+  }
+  const short = mo => { const [y, m] = mo.split('-'); return new Date(y, m - 1, 1).toLocaleString('default', { month: 'short' }) + ' ' + String(y).slice(2); };
+  const SER = [
+    { key: 'income',   name: 'Income',   css: 'var(--series-1)' },
+    { key: 'expenses', name: 'Expenses', css: 'var(--series-2)' },
+    { key: 'profit',   name: 'Profit',   css: 'var(--series-3)' },
+  ];
+  const note = '<div class="viz-note">Expenses = cost of goods sold + Ecocash fees + overhead + variable expenses (capital reinvestment is excluded, as in your profit figure), so Income − Expenses = Profit.</div>';
+
+  // ── Table view (also the accessible fallback for the chart) ──
+  if (_chartShowTable) {
+    host.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Month</th><th class="num">Income</th><th class="num">Expenses</th><th class="num">Profit</th></tr></thead>
+      <tbody>${data.map(r => `<tr><td>${monthLabel(r.month)}</td><td class="num">${fmt(r.income)}</td><td class="num">${fmt(r.expenses)}</td><td class="num ${r.profit >= 0 ? 'profit-pos' : 'profit-neg'}">${fmt(r.profit)}</td></tr>`).join('')}</tbody>
+    </table></div>${note}`;
+    return;
+  }
+
+  // ── Geometry ──
+  const W = 900, H = 320, padL = 52, padR = 12, padT = 12, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const vals = data.flatMap(r => SER.map(s => r[s.key]));
+  const ticks = niceTicks(Math.min(0, ...vals), Math.max(0, ...vals), 5);
+  const yMin = ticks[0], yMax = ticks[ticks.length - 1];
+  const y = v => padT + plotH * (1 - (v - yMin) / (yMax - yMin));
+  const y0 = y(0);
+  const band = plotW / data.length;
+  const gap = 2, barW = Math.max(4, Math.min(24, (band * 0.8 - gap * 2) / 3));
+  const groupW = barW * 3 + gap * 2;
+
+  // Bar path: square at the baseline, 4px rounded at the data end
+  const barPath = (x, v) => {
+    const top = y(v), h = Math.abs(top - y0), r = Math.min(4, h, barW / 2);
+    if (h < 0.5) return '';
+    if (v >= 0) return `M${x},${y0} V${top + r} Q${x},${top} ${x + r},${top} H${x + barW - r} Q${x + barW},${top} ${x + barW},${top + r} V${y0} Z`;
+    return `M${x},${y0} V${top - r} Q${x},${top} ${x + r},${top} H${x + barW - r} Q${x + barW},${top} ${x + barW},${top - r} V${y0} Z`;
+  };
+
+  let svg = `<svg class="viz-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly income, expenses and profit bar chart">`;
+  ticks.forEach(t => {
+    svg += `<line x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}" stroke="var(--sand-dark)" stroke-width="1"/>`;
+    svg += `<text x="${padL - 8}" y="${y(t) + 4}" text-anchor="end">${compactNum(t)}</text>`;
+  });
+  svg += `<line x1="${padL}" x2="${W - padR}" y1="${y0}" y2="${y0}" stroke="var(--ash)" stroke-width="1"/>`;
+  data.forEach((r, i) => {
+    const cx = padL + band * i + band / 2;
+    const gx = cx - groupW / 2;
+    SER.forEach((sr, j) => {
+      const d = barPath(gx + j * (barW + gap), r[sr.key]);
+      if (d) svg += `<path d="${d}" fill="${sr.css}"/>`;
+    });
+    svg += `<text x="${cx}" y="${H - 10}" text-anchor="middle">${short(r.month)}</text>`;
+    svg += `<rect class="viz-hit" data-i="${i}" tabindex="0" x="${padL + band * i}" y="${padT}" width="${band}" height="${plotH}"/>`;
+  });
+  svg += '</svg>';
+
+  host.innerHTML = `<div class="viz-legend">${SER.map(s => `<span><i style="background:${s.css}"></i>${s.name}</span>`).join('')}</div>${svg}<div class="viz-tip" id="dashChartTip"></div>${note}`;
+
+  // ── Hover / focus tooltip (values built with textContent) ──
+  const tip = document.getElementById('dashChartTip');
+  const showTip = (el, evt) => {
+    const r = data[Number(el.getAttribute('data-i'))];
+    tip.textContent = '';
+    const head = document.createElement('div'); head.className = 'tm'; head.textContent = monthLabel(r.month); tip.appendChild(head);
+    SER.forEach(sr => {
+      const row = document.createElement('div'); row.className = 'tr';
+      const k = document.createElement('span'); k.className = 'tk'; k.style.background = sr.css;
+      const n = document.createElement('span'); n.textContent = sr.name;
+      const v = document.createElement('span'); v.className = 'tv'; v.textContent = fmt(r[sr.key]);
+      row.append(k, n, v); tip.appendChild(row);
+    });
+    tip.style.display = 'block';
+    const hb = host.getBoundingClientRect(), eb = el.getBoundingClientRect();
+    let left = (evt && evt.clientX ? evt.clientX : eb.left + eb.width / 2) - hb.left + 14;
+    if (left + tip.offsetWidth > hb.width) left = Math.max(0, left - tip.offsetWidth - 28);
+    tip.style.left = left + 'px';
+    tip.style.top = Math.max(0, (evt && evt.clientY ? evt.clientY : eb.top + 30) - hb.top - 20) + 'px';
+  };
+  host.querySelectorAll('.viz-hit').forEach(el => {
+    el.addEventListener('pointermove', e => showTip(el, e));
+    el.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+    el.addEventListener('focus', () => showTip(el, null));
+    el.addEventListener('blur', () => { tip.style.display = 'none'; });
+  });
 }
 
 // Snapshots removed
@@ -3128,83 +3483,6 @@ function renderDashboard() {
 // ══════════════════════════════════════════
 //  QUOTE ESTIMATOR
 // ══════════════════════════════════════════
-function calcQuote() {
-  const shape = document.getElementById('q_shape').value;
-  const CLAY_DENSITY = 1.9; // g/cm³
-  const SHRINKAGE = 1.12;
-
-  // Show/hide dimension fields based on shape
-  document.getElementById('q_dim_d_wrap').style.display  = (shape==='cylinder'||shape==='sphere') ? '' : 'none';
-  document.getElementById('q_dim_h_wrap').style.display  = (shape==='cylinder') ? '' : 'none';
-  document.getElementById('q_dim_l_wrap').style.display  = (shape==='slab') ? '' : 'none';
-  document.getElementById('q_dim_w_wrap').style.display  = (shape==='slab') ? '' : 'none';
-  document.getElementById('q_dim_t_wrap').style.display  = (shape==='slab') ? '' : 'none';
-  document.getElementById('q_custom_weight_wrap').style.display = (shape==='custom') ? '' : 'none';
-
-  const wall = parseFloat(document.getElementById('q_wall').value) || 0.8;
-  let clayWeight = 0;
-  let dimNote = '';
-
-  if (shape === 'cylinder') {
-    const d = parseFloat(document.getElementById('q_diameter').value) || 0;
-    const h = parseFloat(document.getElementById('q_height').value)   || 0;
-    const r = d / 2;
-    const outerVol = Math.PI * r * r * h;
-    const ri = Math.max(0, r - wall);
-    const innerVol = Math.PI * ri * ri * Math.max(0, h - wall);
-    const vol = outerVol - innerVol;
-    clayWeight = vol * CLAY_DENSITY * SHRINKAGE;
-    dimNote = `Cylinder ${d}cm dia × ${h}cm tall | Wall ${wall}cm | Volume ≈ ${vol.toFixed(1)} cm³ → ${clayWeight.toFixed(0)}g clay`;
-  } else if (shape === 'sphere') {
-    const d = parseFloat(document.getElementById('q_diameter').value) || 0;
-    const r = d / 2;
-    const ri = Math.max(0, r - wall);
-    const vol = (4/3) * Math.PI * (r*r*r - ri*ri*ri) / 2; // hemisphere
-    clayWeight = vol * CLAY_DENSITY * SHRINKAGE;
-    dimNote = `Hemisphere ${d}cm dia | Wall ${wall}cm | Volume ≈ ${vol.toFixed(1)} cm³ → ${clayWeight.toFixed(0)}g clay`;
-  } else if (shape === 'slab') {
-    const l = parseFloat(document.getElementById('q_length').value)    || 0;
-    const w = parseFloat(document.getElementById('q_width').value)     || 0;
-    const t = parseFloat(document.getElementById('q_thickness').value) || 1;
-    const vol = l * w * t;
-    clayWeight = vol * CLAY_DENSITY * SHRINKAGE;
-    dimNote = `Slab ${l}×${w}×${t}cm | Volume ≈ ${vol.toFixed(1)} cm³ → ${clayWeight.toFixed(0)}g clay`;
-  } else {
-    clayWeight = parseFloat(document.getElementById('q_custom_weight').value) || 0;
-    dimNote = `Custom weight: ${clayWeight}g`;
-  }
-
-  const glazeG    = parseFloat(document.getElementById('q_glaze_g').value)    || 0;
-  const firing    = document.getElementById('q_firing').value;
-  const kilnCap   = parseFloat(document.getElementById('q_kiln_cap').value)   || 1;
-  const complexity= parseFloat(document.getElementById('q_complexity').value) || 1;
-  const markup    = parseFloat(document.getElementById('q_markup').value)     || 100;
-
-  const qClayType  = document.getElementById('q_clay_type')?.value || 'white';
-  const qClayRate  = qClayType === 'terra' ? (COSTS.clayTerra || 0) : (COSTS.clayWhite || 0);
-  const clayCost   = clayWeight * qClayRate;
-  const labourCost = 0;
-  const glazeCost  = glazeG * (COSTS.glazeG || 0);
-  const bisqueCost = (firing==='both'||firing==='bisque') ? (COSTS.bisque||0)/kilnCap : 0;
-  const glazeFireCost=(firing==='both'||firing==='glaze') ? (COSTS.glazeFire||0)/kilnCap : 0;
-  const total = clayCost + labourCost + glazeCost + bisqueCost + glazeFireCost;
-  const price = total * (1 + markup/100);
-
-  document.getElementById('qPrice').textContent = fmt(price);
-  document.getElementById('qSub').textContent = `Cost: ${fmt(total)} | Markup: ${markup}%`;
-  document.getElementById('qDimNote').textContent = dimNote;
-
-  document.getElementById('quoteBreakdown').innerHTML = `
-    <div class="cost-row"><span>${qClayType==='terra'?'Terracotta':'White Clay'} (${clayWeight.toFixed(0)}g × ${fmt(qClayRate)}/g)</span><span>${fmt(clayCost)}</span></div>
-    <div class="cost-row"><span>Glaze (${glazeG}g × ${fmt(COSTS.glazeG)}/g)</span><span>${fmt(glazeCost)}</span></div>
-    <div class="cost-row"><span>Bisque fire (${fmt(COSTS.bisque)} ÷ ${kilnCap})</span><span>${fmt(bisqueCost)}</span></div>
-    <div class="cost-row"><span>Glaze fire (${fmt(COSTS.glazeFire)} ÷ ${kilnCap})</span><span>${fmt(glazeFireCost)}</span></div>
-    <div class="cost-row total"><span>Total Cost</span><span>${fmt(total)}</span></div>
-    <div class="cost-row price"><span>Selling Price (${markup}% markup)</span><span>${fmt(price)}</span></div>
-  `;
-}
-
-
 // ══════════════════════════════════════════
 //  EXCEL EXPORT
 // ══════════════════════════════════════════
@@ -3566,6 +3844,14 @@ function closeSaleEdit() {
   document.getElementById('saleEditModal').style.display = 'none';
 }
 
+// Ecocash fee for a sale: per-payment for part-paid custom orders, otherwise on the total.
+function saleEcocashFee(sale) {
+  if (Array.isArray(sale.payments)) {
+    return Math.round(sale.payments.filter(p => p.type === 'ecocash').reduce((n, p) => n + (p.amount || 0), 0) * ECOCASH_FEE_RATE * 100) / 100;
+  }
+  return sale.paymentType === 'ecocash' ? Math.round((sale.total || 0) * ECOCASH_FEE_RATE * 100) / 100 : 0;
+}
+
 function calcSaleEditTotal() {
   const price = parseFloat(document.getElementById('saleEdit_price').value) || 0;
   const qty   = parseFloat(document.getElementById('saleEdit_qty').value)   || 1;
@@ -3589,7 +3875,9 @@ function saveSaleEdit() {
   const disc     = parseFloat(document.getElementById('saleEdit_disc').value)  || 0;
   const total    = price * qty - disc;
   const cost     = unitCost * qty;
-  const profit   = total - cost;
+  sale.total = total;
+  const fee      = saleEcocashFee(sale);
+  const profit   = total - cost - fee;
   const catVal   = document.getElementById('saleEdit_cat').value;
   // Update appropriate name field based on stream
   if (stream === 'instore' || stream === 'pottery') {
@@ -3605,6 +3893,7 @@ function saveSaleEdit() {
   sale.disc   = disc;
   sale.total  = total;
   sale.cost   = cost;
+  sale.ecocashFee = fee;
   sale.profit = profit;
   sale.notes  = document.getElementById('saleEdit_notes').value;
   save(KEYS.sales, SALES);
@@ -3874,6 +4163,112 @@ function exportVouchersExcel() {
 }
 
 // ══════════════════════════════════════════
+//  LOGIN / ROLES  (owner = everything, assistant = POS only)
+//  NOTE: this is a UI-level gate for a shared shop laptop. Passcodes are
+//  stored hashed (SHA-256 + salt) in this browser; it keeps the assistant out
+//  of the revenue screens but is not a substitute for server-side security.
+// ══════════════════════════════════════════
+const AUTH_KEY = 'klay_auth';
+function getAuth() { try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || null; } catch (e) { return null; } }
+function currentRole() { try { return sessionStorage.getItem('klay_role'); } catch (e) { return null; } }
+function isAssistant() { return currentRole() === 'assistant'; }
+
+async function hashPass(role, pass, salt) {
+  const data = role + ':' + salt + ':' + pass;
+  if (window.crypto && crypto.subtle) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  let h = 5381; for (let i = 0; i < data.length; i++) h = ((h << 5) + h + data.charCodeAt(i)) | 0;
+  return 'f' + (h >>> 0).toString(16);
+}
+
+function authMsg(t) { const m = document.getElementById('authMsg'); if (m) m.textContent = t || ''; }
+
+// Returns true when a role is already active for this tab; otherwise shows the login screen.
+function authGate() {
+  const role = currentRole();
+  const ov = document.getElementById('authOverlay');
+  if (role === 'owner' || role === 'assistant') {
+    document.body.classList.add('role-' + role);
+    const b = document.getElementById('roleBadge');
+    if (b) { b.textContent = role === 'owner' ? 'Owner' : 'Shop Assistant'; b.style.display = 'inline-block'; }
+    if (role === 'assistant') {
+      document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+      document.getElementById('page-pos').classList.add('active');
+      document.querySelectorAll('.nav-btn').forEach(bt => bt.classList.toggle('active', bt.dataset.page === 'pos'));
+    }
+    ov.style.display = 'none';
+    return true;
+  }
+  const auth = getAuth();
+  ov.style.display = 'flex';
+  document.getElementById('authSetupBox').style.display = auth ? 'none' : 'block';
+  document.getElementById('authLoginBox').style.display = auth ? 'block' : 'none';
+  document.getElementById('authSubtitle').textContent = auth ? 'Log in to continue' : 'First-time setup — choose your passcodes';
+  if (auth) {
+    const sel = document.getElementById('auth_role');
+    if (!auth.assistant) { [...sel.options].forEach(o => { if (o.value === 'assistant') o.remove(); }); }
+    setTimeout(() => document.getElementById('auth_pass')?.focus(), 50);
+  }
+  return false;
+}
+
+async function authCreate() {
+  const o = document.getElementById('auth_new_owner').value, o2 = document.getElementById('auth_new_owner2').value;
+  const a = document.getElementById('auth_new_asst').value;
+  if (o.length < 4) { authMsg('Owner passcode must be at least 4 characters.'); return; }
+  if (o !== o2) { authMsg('Owner passcodes do not match.'); return; }
+  if (a && a.length < 4) { authMsg('Shop assistant passcode must be at least 4 characters.'); return; }
+  if (a && a === o) { authMsg('The two passcodes must be different.'); return; }
+  const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const rec = { salt, owner: await hashPass('owner', o, salt), assistant: a ? await hashPass('assistant', a, salt) : null };
+  localStorage.setItem(AUTH_KEY, JSON.stringify(rec));
+  sessionStorage.setItem('klay_role', 'owner');
+  location.reload();
+}
+
+async function authLogin() {
+  const auth = getAuth();
+  if (!auth) { location.reload(); return; }
+  const role = document.getElementById('auth_role').value;
+  const pass = document.getElementById('auth_pass').value;
+  const h = await hashPass(role, pass, auth.salt);
+  if (auth[role] && h === auth[role]) {
+    sessionStorage.setItem('klay_role', role);
+    location.reload();   // reload so the app boots already knowing the role (nothing owner-only is ever rendered for the assistant)
+  } else {
+    document.getElementById('auth_pass').value = '';
+    authMsg('Incorrect passcode.');
+  }
+}
+
+function authLogout() {
+  try { sessionStorage.removeItem('klay_role'); } catch (e) {}
+  location.reload();
+}
+
+function openAuthSettings() {
+  document.getElementById('as_owner').value = ''; document.getElementById('as_asst').value = '';
+  document.getElementById('as_disable').checked = false;
+  document.getElementById('authSettingsModal').style.display = 'flex';
+}
+function closeAuthSettings() { document.getElementById('authSettingsModal').style.display = 'none'; }
+async function saveAuthSettings() {
+  if (currentRole() !== 'owner') return;
+  const auth = getAuth(); if (!auth) return;
+  const o = document.getElementById('as_owner').value, a = document.getElementById('as_asst').value;
+  if ((o && o.length < 4) || (a && a.length < 4)) { showAlert('Passcodes must be at least 4 characters.', 'error'); return; }
+  if (o) auth.owner = await hashPass('owner', o, auth.salt);
+  if (a) auth.assistant = await hashPass('assistant', a, auth.salt);
+  if (document.getElementById('as_disable').checked) auth.assistant = null;
+  if (auth.assistant && auth.assistant === auth.owner) { showAlert('The two passcodes must be different.', 'error'); return; }
+  localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
+  closeAuthSettings();
+  showAlert('Passcodes updated on this device.');
+}
+
+// ══════════════════════════════════════════
 //  GOOGLE AUTH
 // ══════════════════════════════════════════
 let tokenClient = null;
@@ -4036,6 +4431,7 @@ function forceLoadLocal() {
   try { EXPENSES  = JSON.parse(localStorage.getItem('klay_expenses')  || '[]'); } catch(e){ EXPENSES=[]; }
   try { FLOAT     = JSON.parse(localStorage.getItem('klay_float')     || '[]'); } catch(e){ FLOAT=[]; }
   try { VOUCHERS  = JSON.parse(localStorage.getItem('klay_vouchers')  || '[]'); } catch(e){ VOUCHERS=[]; }
+  try { BOOKINGS  = JSON.parse(localStorage.getItem('klay_bookings')  || '[]'); } catch(e){ BOOKINGS=[]; }
   try { COSTS     = JSON.parse(localStorage.getItem('klay_costs')     || '{}'); } catch(e){}
 
   // Re-render everything
@@ -4047,11 +4443,10 @@ function forceLoadLocal() {
   renderCatalogue('shop');
   renderCatalogue('pp');
   ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); });
-  renderStock();
   renderFloat();
   renderVoucherLog();
   populateVoucherDropdowns();
-  calcQuote();
+  renderBookings();
 
   const total = streams.reduce((n,s) => n + (SALES[s]?.length||0), 0);
   showAlert('✓ Force loaded ' + total + ' sales records from browser storage.');
@@ -4164,27 +4559,30 @@ function bootApp() {
   SNAPSHOTS = _readLocal('klay_snapshots') || [];
   FLOAT     = _readLocal('klay_float')     || [];
   VOUCHERS  = _readLocal('klay_vouchers')  || [];
+  BOOKINGS  = _readLocal('klay_bookings')  || [];
   VOUCHERS.forEach(v => { if (v.balance === undefined) v.balance = v.used ? 0 : v.amount; if (!v.originalAmount) v.originalAmount = v.amount; });
 
-  loadCostInputs();
-  renderCostsSummary();
-  renderDashboard();
+  const _asst = isAssistant();   // shop assistant: only the POS screens are ever rendered
+  if (!_asst) { loadCostInputs(); renderCostsSummary(); renderDashboard(); }
   populateSalesDropdowns();
   renderAllSalesLogs();
-  renderCatalogue('shop');
-  renderCatalogue('pp');
-  ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); });
-  renderStock();
-  calcQuote();
-  updateFloatTypeStyle();
-  renderFloat();
+  if (!_asst) {
+    renderCatalogue('shop');
+    renderCatalogue('pp');
+    ['overhead','variable','capital','cog'].forEach(s => { populateExpenseMonthFilter(s); renderExpenses(s); });
+    updateFloatTypeStyle();
+    renderFloat();
+  }
   renderVoucherLog();
   populateVoucherDropdowns();
+  renderBookings();
+  if (!_asst) renderCustomOrders();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (!authGate()) return;   // nothing loads until someone has logged in
   const today = new Date().toISOString().slice(0,10);
-  document.querySelectorAll('input[type=date]').forEach(el => el.value = today);
+  document.querySelectorAll('input[type=date]').forEach(el => { if (!el.hasAttribute('data-nodefault')) el.value = today; });
   document.getElementById('headerDate').textContent =
     new Date().toLocaleDateString('en-US', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
