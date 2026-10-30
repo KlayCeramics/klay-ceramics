@@ -273,6 +273,22 @@
   /* ── ROLES: the shop-assistant login never shows owner-only elements ── */
   body.role-assistant .owner-only { display:none !important; }
   .role-badge { font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:20px; background:rgba(255,255,255,0.12); color:var(--sand); white-space:nowrap; }
+  /* ── PAINTING FORMS ── */
+  .pf-piece { border:1.5px solid var(--sand-dark); border-radius:10px; padding:0.7rem 0.8rem; margin-bottom:0.6rem; background:var(--cream); }
+  .pf-piece-main { display:grid; grid-template-columns:1.2fr 1.8fr 0.7fr auto; gap:0.7rem; align-items:end; }
+  .pf-piece-other { display:grid; grid-template-columns:1fr 1fr; gap:0.7rem; margin-top:0.6rem; }
+  .pf-thumb-wrap { position:relative; display:inline-block; margin:0 0.4rem 0.4rem 0; }
+  .pf-thumb { width:64px; height:64px; object-fit:cover; border-radius:8px; border:1.5px solid var(--sand-dark); cursor:zoom-in; display:block; background:var(--sand); }
+  .pf-thumb-x { position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; border:none; background:#c04444; color:#fff; font-size:0.7rem; cursor:pointer; line-height:1; }
+  .pf-nophoto { display:inline-flex; width:64px; height:64px; align-items:center; justify-content:center; border-radius:8px; border:1.5px dashed var(--sand-dark); font-size:1.3rem; margin:0 0.4rem 0.4rem 0; color:var(--ash); }
+  .pf-card { border:1.5px solid var(--sand-dark); border-radius:12px; padding:0.9rem 1rem; margin-bottom:0.8rem; background:var(--white); }
+  .pf-card-head { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+  .pf-batch { font-family:'Cormorant Garamond',serif; font-size:1.25rem; font-weight:600; color:var(--clay-dark); }
+  .pf-badge { font-size:0.72rem; font-weight:600; padding:0.2rem 0.65rem; border-radius:20px; white-space:nowrap; }
+  .pf-meta { font-size:0.82rem; color:var(--ash); margin:0.25rem 0 0.5rem; }
+  .pf-pieces-list { margin:0.3rem 0 0.5rem 1.1rem; font-size:0.85rem; padding:0; }
+  .pf-actions { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-top:0.6rem; }
+  @media (max-width:700px) { .pf-piece-main { grid-template-columns:1fr; } .pf-piece-other { grid-template-columns:1fr; } }
   /* ── POS SUBPAGES ── */
   .pos-sub { display:none; }
   .pos-sub.active { display:block; }
@@ -758,26 +774,51 @@
 
   <div class="tab-pane" id="stab-pottery">
     <div class="card">
-      <div class="card-title">New Pottery Painting Sale</div>
+      <div class="card-title">New Painting Form</div>
+      <div style="font-size:0.82rem;color:var(--ash);margin:-0.3rem 0 0.9rem;">One form per customer or group. Add every piece being painted — the whole form gets one batch number and is counted as a Pottery Painting sale.</div>
       <div class="form-grid wide">
+        <div class="form-group"><label>Name</label><input type="text" id="pf_name" placeholder="Customer / group name"></div>
+        <div class="form-group"><label>Contact (WhatsApp)</label><input type="tel" id="pf_contact" placeholder="e.g. 0771234567 or +27821234567"></div>
         <div class="form-group"><label>Date</label><input type="date" id="pp_date"></div>
-        <div class="form-group"><label>Product</label><select id="pp_product" onchange="fillPPPrice()"><option value="">— Select —</option></select></div>
-        <div class="form-group" id="pp_other_group" style="display:none;"><label>Item Name (Other)</label><input type="text" id="pp_other_name" placeholder="What was sold?"></div>
-        <div class="form-group" id="pp_othercost_group" style="display:none;"><label>Unit Cost (USD) — editable</label><input type="number" id="pp_other_cost" step="0.01" value="0" oninput="calcSaleTotal('pp')"></div>
-        <div class="form-group"><label>Description / Notes</label><input type="text" id="pp_desc"></div>
-        <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="pp_price" step="0.01" oninput="calcSaleTotal('pp')"></div>
-        <div class="form-group"><label>Quantity</label><input type="number" id="pp_qty2" step="1" value="1" oninput="calcSaleTotal('pp')"></div>
+      </div>
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin:1rem 0 0.5rem;">Pieces</div>
+      <div id="pf_pieces"></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addFormPiece()">+ Add another piece</button>
+
+      <div style="margin-top:1.1rem;">
+        <label style="display:block;font-size:0.72rem;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:var(--ash);margin-bottom:0.4rem;">Photos (optional)</label>
+        <input type="file" id="pf_photo_input" accept="image/*" multiple onchange="handleFormPhotos(this)" style="font-size:0.82rem;">
+        <div id="pf_photo_previews" style="margin-top:0.6rem;"></div>
+      </div>
+
+      <div class="form-grid wide" style="margin-top:1rem;">
         <div class="form-group"><label>Discount (USD)</label><input type="number" id="pp_disc" step="0.01" value="0" oninput="calcSaleTotal('pp')"></div>
-        <div class="form-group"><label>Payment Type</label><select id="pp_paytype" onchange="calcSaleTotal('pp')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option><option value="other">📝 Other</option></select></div>
-        <div class="form-group" id="pp_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="pp_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
-        <div class="form-group" id="pp_payother_group" style="display:none;"><label>Payment Description (Other)</label><input type="text" id="pp_payother" placeholder="e.g. bank transfer, swap, card"></div>
-        <div class="form-group"><label>Total (auto)</label><input type="text" id="pp_total" readonly style="background:var(--sand);font-weight:600;"></div>
-        <div class="form-group owner-only"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
         <div class="form-group"><label>Gift Voucher Applied (optional)</label><select id="pp_voucher" onchange="applyVoucherDiscount('pp')"><option value="">— None —</option></select></div>
         <div class="form-group" id="pp_voucher_info" style="display:none;"><label>Voucher Balance Available</label><input type="text" id="pp_voucher_balance" readonly style="background:var(--sand);color:var(--glaze-green);font-weight:600;"></div>
         <div class="form-group" id="pp_voucher_split" style="display:none;"><label>Voucher Amount to Apply (USD)</label><input type="number" id="pp_voucher_apply" step="0.01" min="0" oninput="calcSaleTotal('pp')"><span class="inline-calc">Leave blank to apply full balance or order total (whichever is less)</span></div>
+        <div class="form-group"><label>Payment Type</label><select id="pp_paytype" onchange="calcSaleTotal('pp')"><option value="cash">💵 Cash</option><option value="ecocash">📱 Ecocash</option><option value="other">📝 Other</option></select></div>
+        <div class="form-group" id="pp_fee_group" style="display:none;"><label>Ecocash Fee (1.7%, auto)</label><input type="text" id="pp_fee" readonly style="background:var(--sand);font-weight:600;color:#c04444;"></div>
+        <div class="form-group" id="pp_payother_group" style="display:none;"><label>Payment Description (Other)</label><input type="text" id="pp_payother" placeholder="e.g. bank transfer, swap, card"></div>
+        <div class="form-group"><label>Subtotal (auto)</label><input type="text" id="pf_subtotal" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group"><label>Total (auto)</label><input type="text" id="pp_total" readonly style="background:var(--sand);font-weight:600;"></div>
+        <div class="form-group owner-only"><label>Profit (auto)</label><input type="text" id="pp_profit" readonly style="background:var(--sand);font-weight:600;color:var(--glaze-green);"></div>
       </div>
-      <div class="flex-end"><button class="btn btn-primary" onclick="addSale('pottery')">Record Sale</button></div>
+      <div class="flex-end"><button class="btn btn-primary" id="pf_save_btn" onclick="saveForm()">Log Form</button></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
+        <div class="card-title" style="margin:0;border:none;padding:0;">Painting Forms</div>
+        <span id="pf_summary" style="font-size:0.8rem;color:var(--ash);"></span>
+      </div>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <input type="search" id="pf_search" placeholder="🔍 Search by name, contact number or batch number" oninput="renderForms()" style="flex:1;min-width:240px;padding:0.5rem 0.8rem;border:1.5px solid var(--sand-dark);border-radius:8px;font-size:0.88rem;background:var(--cream);color:var(--smoke);">
+        <select id="pf_status_filter" onchange="renderForms()" style="padding:0.5rem 0.7rem;border:1.5px solid var(--sand-dark);border-radius:8px;font-size:0.85rem;background:var(--cream);color:var(--smoke);">
+          <option value="active">Not yet collected</option><option value="all">All forms</option>
+          <option value="painted">🎨 Painted</option><option value="glazing">✨ Glazing</option><option value="ready">📦 Ready for collection</option><option value="contacted">📞 Contacted</option><option value="collected">✅ Collected</option>
+        </select>
+      </div>
+      <div id="pf_list"></div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.6rem;border-bottom:1px solid var(--sand-dark);">
@@ -1256,6 +1297,11 @@
 </div>
 
 
+<!-- ══════════════ PHOTO VIEWER ══════════════ -->
+<div class="modal-overlay" id="photoViewModal" onclick="this.style.display='none'" style="cursor:zoom-out;">
+  <img id="photoViewImg" alt="Piece photo" style="max-width:92vw;max-height:90vh;border-radius:10px;box-shadow:0 12px 48px rgba(0,0,0,0.5);">
+</div>
+
 <!-- ══════════════ ORDER PAYMENT MODAL ══════════════ -->
 <div class="modal-overlay" id="orderPayModal" onclick="if(event.target===this)closeOrderPay()">
   <div class="modal-box" style="max-width:560px;">
@@ -1319,6 +1365,7 @@ const KEYS = {
   float:    'klay_float',
   vouchers: 'klay_vouchers',
   bookings: 'klay_bookings',
+  forms:    'klay_forms',
 };
 
 // ══════════════════════════════════════════
@@ -1350,6 +1397,7 @@ const TAB_MAP = {
   klay_float:          'Float',
   klay_vouchers:       'Vouchers',
   klay_bookings:       'Bookings',
+  klay_forms:          'PaintingForms',
 };
 
 // Virtual keys that are assembled from sub-keys
@@ -1626,6 +1674,18 @@ async function readAllFromSheets() {
           return; // skip to next key
         }
 
+        // Painting forms change status over time and may be updated on the shop laptop
+        // or the owner's device — keep whichever copy of each form is newest.
+        if (key === 'klay_forms' && Array.isArray(fromSheet) && Array.isArray(fromLocal)) {
+          const map = new Map(fromLocal.map(x => [x.id, x]));
+          fromSheet.forEach(x => { const l = map.get(x.id); if (!l || (x.updatedAt || 0) > (l.updatedAt || 0)) map.set(x.id, x); });
+          const mergedForms = [...map.values()];
+          _cache[key] = mergedForms;
+          localStorage.setItem(key, JSON.stringify(mergedForms));
+          if (JSON.stringify(mergedForms) !== JSON.stringify(fromSheet)) _dirty[key] = true;
+          loaded++;
+          return;
+        }
         // Both parsed OK — merge arrays, prefer local for non-arrays
         if (Array.isArray(fromSheet) && Array.isArray(fromLocal)) {
           const localIds = new Set(fromLocal.map(x => x.id));
@@ -1779,7 +1839,7 @@ async function pushAllToSheets() {
   _cache['klay_products_pp']   = rawProducts.pp   || [];
 
   // Load all other keys directly from localStorage into cache
-  ['klay_costs','klay_expenses','klay_float','klay_vouchers','klay_bookings'].forEach(k => {
+  ['klay_costs','klay_expenses','klay_float','klay_vouchers','klay_bookings','klay_forms'].forEach(k => {
     const raw = localStorage.getItem(k);
     if (raw) { try { _cache[k] = JSON.parse(raw); } catch(e) {} }
   });
@@ -1867,6 +1927,7 @@ let SNAPSHOTS = load(KEYS.snapshots) || [];
 let FLOAT = load(KEYS.float) || [];
 let VOUCHERS = load(KEYS.vouchers) || [];
 let BOOKINGS = load(KEYS.bookings) || [];
+let FORMS = load(KEYS.forms) || [];
 // Migrate old vouchers that don't have balance field
 VOUCHERS.forEach(v => { if (v.balance === undefined) v.balance = v.used ? 0 : v.amount; if (!v.originalAmount) v.originalAmount = v.amount; });
 
@@ -1936,7 +1997,7 @@ function showPage(id) {
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => { if (b.dataset.page === id) b.classList.add('active'); });
   if (id === 'dashboard') renderDashboard();
-  if (id === 'pos') { populateSalesDropdowns(); renderAllSalesLogs(); populateVoucherDropdowns(); renderBookings(); }
+  if (id === 'pos') { populateSalesDropdowns(); renderAllSalesLogs(); populateVoucherDropdowns(); renderBookings(); renderForms(); }
   if (id === 'orders') renderCustomOrders();
   if (id === 'costs') renderCostsSummary();
   if (id === 'products') { renderCatalogue('shop'); renderCatalogue('pp'); }
@@ -2239,6 +2300,7 @@ function populateSalesDropdowns() {
       '<optgroup label="Pottery Painting">' + PRODUCTS.pp.map(p => `<option value="pp:${p.id}">${p.name} (PP)</option>`).join('') + '</optgroup>';
     whSelect.value = was;
   }
+  if (typeof refreshFormPieceProducts === 'function') refreshFormPieceProducts();
 }
 
 function fillWholesaleFromProduct() {
@@ -2294,6 +2356,7 @@ function fillPPPrice() {
 const ECOCASH_FEE_RATE = 0.017;
 
 function calcSaleTotal(prefix) {
+  if (prefix === 'pp') { calcFormTotals(); return; }   // pottery painting is entered via the Painting Form
   const price = parseFloat(document.getElementById(prefix+'_price')?.value) || 0;
   const qty   = parseFloat(document.getElementById(prefix+'_qty')?.value || document.getElementById(prefix+'_qty2')?.value) || 1;
   const disc  = parseFloat(document.getElementById(prefix+'_disc')?.value) || 0;
@@ -2596,6 +2659,11 @@ function addSale(stream) {
 }
 
 function deleteSale(stream, id) {
+  const _linked = (SALES[stream] || []).find(s => s.id === id);
+  if (_linked && _linked.formId) {
+    showAlert(`This sale belongs to painting form ${_linked.batchNo || ''}. Delete the form from the Painting Forms list instead.`, 'error');
+    return;
+  }
   if (!confirm('Delete this sale entry?')) return;
   SALES[stream] = SALES[stream].filter(s => s.id !== id);
   save(KEYS.sales, SALES);
@@ -2656,7 +2724,7 @@ function renderSalesLog(stream) {
     <tbody>
       ${data.map(s => `<tr>
         <td>${s.date}</td>
-        <td>${esc(s.productName || s.cat || '—')}${s.isOther ? ' <span class="badge badge-bisque">Other</span>' : ''}</td>
+        <td>${esc(s.productName || s.cat || '—')}${s.isOther ? ' <span class="badge badge-bisque">Other</span>' : ''}${s.batchNo ? ' <span class="badge badge-clay">' + esc(s.batchNo) + '</span>' : ''}</td>
         <td>${esc(s.desc || '—')}</td>
         <td class="num">${fmt(s.price)}</td>
         <td class="num">${s.qty}</td>
@@ -2909,6 +2977,397 @@ function renderBookings() {
       <td>${esc(b.notes || '—')}</td>
       <td style="display:flex;gap:0.3rem;"><button class="btn btn-ghost btn-sm" onclick="editBooking(${b.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})">✕</button></td>
     </tr>`).join('')}</tbody></table></div>`;
+}
+
+// ══════════════════════════════════════════
+//  PAINTING FORMS  (POS → Sales → Pottery Painting)
+//  One form = one batch number = one customer/group with several pieces.
+//  Logging a form creates ONE Pottery Painting sale (flagged with formId/batchNo),
+//  so every existing total, dashboard and export keeps working.
+//  Photos are compressed and kept in this browser's IndexedDB (they are not
+//  written to the Google Sheet — only their ids are).
+// ══════════════════════════════════════════
+const FORM_STATUSES = [
+  { k: 'painted',   label: 'Painted',              icon: '🎨' },
+  { k: 'glazing',   label: 'Glazing',              icon: '✨' },
+  { k: 'ready',     label: 'Ready for collection', icon: '📦' },
+  { k: 'contacted', label: 'Contacted',            icon: '📞' },
+  { k: 'collected', label: 'Collected',            icon: '✅' },
+];
+const FORM_STATUS_COLORS = { painted:['#f3e3d3','#8a5a3b'], glazing:['#dce9f7','#2a5d94'], ready:['#d9f0e3','#1f7a4d'], contacted:['#fbefc9','#8a6d12'], collected:['#e6e6e6','#555'] };
+const formStatusInfo = k => FORM_STATUSES.find(x => x.k === k) || FORM_STATUSES[0];
+
+// ── photo storage (IndexedDB) ──
+let _photoDBp = null;
+function photoDB() {
+  if (_photoDBp) return _photoDBp;
+  _photoDBp = new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open('klay_photos', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('photos', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  });
+  return _photoDBp;
+}
+async function photoPut(id, blob) {
+  try {
+    const db = await photoDB();
+    await new Promise((res, rej) => { const tx = db.transaction('photos', 'readwrite'); tx.objectStore('photos').put({ id, blob }); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    return true;
+  } catch (e) { console.warn('photoPut failed', e); return false; }
+}
+async function photoGet(id) {
+  try {
+    const db = await photoDB();
+    return await new Promise((res, rej) => { const rq = db.transaction('photos').objectStore('photos').get(id); rq.onsuccess = () => res(rq.result ? rq.result.blob : null); rq.onerror = () => rej(rq.error); });
+  } catch (e) { return null; }
+}
+async function photoDel(id) {
+  try {
+    const db = await photoDB();
+    await new Promise((res, rej) => { const tx = db.transaction('photos', 'readwrite'); tx.objectStore('photos').delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  } catch (e) {}
+}
+async function compressImage(file, maxDim = 1024, quality = 0.72) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const sc = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
+    return blob || file;
+  } catch (e) { return file; }
+}
+
+// ── pending photos on the new-form card ──
+let _formPhotos = [];
+async function handleFormPhotos(input) {
+  const files = [...input.files]; input.value = '';
+  for (const f of files) {
+    if (!f.type.startsWith('image/')) continue;
+    const blob = await compressImage(f);
+    _formPhotos.push({ id: 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), blob, url: URL.createObjectURL(blob) });
+  }
+  renderFormPhotoPreviews();
+}
+function removeFormPhoto(i) { _formPhotos.splice(i, 1); renderFormPhotoPreviews(); }
+function renderFormPhotoPreviews() {
+  const host = document.getElementById('pf_photo_previews');
+  if (!host) return;
+  host.innerHTML = _formPhotos.map((p, i) => `<div class="pf-thumb-wrap"><img class="pf-thumb" src="${p.url}" onclick="viewPhotoUrl(this.src)" alt="photo ${i + 1}"><button type="button" class="pf-thumb-x" onclick="removeFormPhoto(${i})" title="Remove">✕</button></div>`).join('');
+}
+function viewPhotoUrl(url) {
+  document.getElementById('photoViewImg').src = url;
+  document.getElementById('photoViewModal').style.display = 'flex';
+}
+
+// ── piece rows ──
+function ppOptionsHtml() {
+  return '<option value="">— Select —</option>' +
+    PRODUCTS.pp.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('') +
+    '<option value="other">✳️ Other (not in products)</option>';
+}
+function addFormPiece() {
+  const host = document.getElementById('pf_pieces');
+  if (!host) return;
+  const d = document.createElement('div');
+  d.className = 'pf-piece';
+  d.innerHTML = `<div class="pf-piece-main">
+      <div class="form-group"><label>Product</label><select class="pfp-product" onchange="onPieceProduct(this)">${ppOptionsHtml()}</select></div>
+      <div class="form-group"><label>Description of piece</label><input type="text" class="pfp-desc" placeholder="e.g. blue floral mug, name on base"></div>
+      <div class="form-group"><label>Price (USD)</label><input type="number" class="pfp-price" step="0.01" min="0" oninput="calcFormTotals()"></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="removeFormPiece(this)" title="Remove this piece">✕</button>
+    </div>
+    <div class="pf-piece-other" style="display:none;">
+      <div class="form-group"><label>Item Name (Other)</label><input type="text" class="pfp-oname" placeholder="What is being painted?"></div>
+      <div class="form-group"><label>Unit Cost (USD) — editable</label><input type="number" class="pfp-cost" step="0.01" min="0" value="0" oninput="calcFormTotals()"></div>
+    </div>`;
+  host.appendChild(d);
+}
+function removeFormPiece(btn) {
+  const host = document.getElementById('pf_pieces');
+  const row = btn.closest('.pf-piece');
+  if (host.children.length <= 1) { row.remove(); addFormPiece(); } else row.remove();
+  calcFormTotals();
+}
+function refreshFormPieceProducts() {
+  document.querySelectorAll('#pf_pieces .pfp-product').forEach(sel => {
+    const was = sel.value; sel.innerHTML = ppOptionsHtml(); sel.value = was;
+  });
+}
+function onPieceProduct(sel) {
+  const row = sel.closest('.pf-piece');
+  row.querySelector('.pf-piece-other').style.display = sel.value === 'other' ? '' : 'none';
+  const prod = PRODUCTS.pp.find(p => String(p.id) === sel.value);
+  if (prod) row.querySelector('.pfp-price').value = fmtN(calcProductCost(prod).sellingPrice);
+  calcFormTotals();
+}
+function readFormPieces() {
+  return [...document.querySelectorAll('#pf_pieces .pf-piece')].map(row => {
+    const v = row.querySelector('.pfp-product').value;
+    const isOther = v === 'other';
+    const prod = isOther ? null : PRODUCTS.pp.find(p => String(p.id) === v);
+    return {
+      selected: !!v, productId: prod ? prod.id : null, isOther,
+      productName: isOther ? ((row.querySelector('.pfp-oname').value || '').trim() || 'Other') : (prod ? prod.name : ''),
+      desc: row.querySelector('.pfp-desc').value.trim(),
+      price: parseFloat(row.querySelector('.pfp-price').value) || 0,
+      cost: isOther ? (parseFloat(row.querySelector('.pfp-cost').value) || 0) : (prod ? calcProductCost(prod).total : 0),
+    };
+  });
+}
+function formSubtotal() { return readFormPieces().reduce((n, p) => n + p.price, 0); }
+
+function calcFormTotals() {
+  const pcs = readFormPieces();
+  const subtotal = pcs.reduce((n, p) => n + p.price, 0);
+  const cost = pcs.reduce((n, p) => n + p.cost, 0);
+  const disc = parseFloat(document.getElementById('pp_disc')?.value) || 0;
+  const total = subtotal - disc;
+  const payType = document.getElementById('pp_paytype')?.value || 'cash';
+  const fee = payType === 'ecocash' ? total * ECOCASH_FEE_RATE : 0;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('pf_subtotal', fmt(subtotal)); set('pp_total', fmt(total)); set('pp_fee', fmt(fee));
+  const fg = document.getElementById('pp_fee_group'); if (fg) fg.style.display = payType === 'ecocash' ? '' : 'none';
+  const og = document.getElementById('pp_payother_group'); if (og) og.style.display = payType === 'other' ? '' : 'none';
+  const profit = total - cost - fee;
+  const pe = document.getElementById('pp_profit');
+  if (pe) { pe.value = fmt(profit); pe.style.color = profit >= 0 ? 'var(--glaze-green)' : '#c04444'; }
+}
+
+// ── batch numbers, WhatsApp ──
+function nextBatchNo() {
+  let max = 0;
+  FORMS.forEach(f => { const m = /(\d+)$/.exec(f.batchNo || ''); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+  return 'PP-' + String(max + 1).padStart(4, '0');
+}
+// Zimbabwe (263) is assumed for numbers starting with 0; use +<country code> for anything else.
+function waNumber(raw) {
+  const t = String(raw || '').trim();
+  let d = t.replace(/\D/g, '');
+  if (!d) return '';
+  if (t.startsWith('+')) { /* already international */ }
+  else if (d.startsWith('00')) d = d.slice(2);
+  else if (d.startsWith('0')) d = '263' + d.slice(1);
+  else if (d.length <= 9) d = '263' + d;
+  return d.length >= 10 && d.length <= 15 ? d : '';
+}
+function readyMessage(batchNo) {
+  return `Hi! Your items are ready for collection at Klay Ceramics. Your collection number is *${batchNo}* - please provide this number upon collection. You can collect any time during our opening hours. Please note collection must be made within 30 days of notification. Monday-Friday 8am-5pm and Saturdays 8am-1pm`;
+}
+function waLink(f) {
+  const n = waNumber(f.contact);
+  return n ? `https://wa.me/${n}?text=${encodeURIComponent(readyMessage(f.batchNo))}` : '';
+}
+
+// ── logging a form ──
+let _savingForm = false;
+async function saveForm() {
+  if (_savingForm) return;
+  const name = document.getElementById('pf_name').value.trim();
+  const contact = document.getElementById('pf_contact').value.trim();
+  const date = document.getElementById('pp_date').value;
+  if (!name) { showAlert('Please enter the customer name.', 'error'); return; }
+  if (!waNumber(contact)) { showAlert('Please enter a valid WhatsApp number (e.g. 0771234567, or +27… for other countries).', 'error'); return; }
+  if (!date) { showAlert('Please enter a date.', 'error'); return; }
+  const pieces = readFormPieces();
+  if (!pieces.length || pieces.some(p => !p.selected)) { showAlert('Please choose a product for every piece (or remove empty pieces).', 'error'); return; }
+  const payType = document.getElementById('pp_paytype').value || 'cash';
+  const payNote = payType === 'other' ? document.getElementById('pp_payother').value.trim() : '';
+  if (payType === 'other' && !payNote) { showAlert('Please describe the "Other" payment method.', 'error'); return; }
+
+  _savingForm = true;
+  try {
+    const subtotal = pieces.reduce((n, p) => n + p.price, 0);
+    const cost = pieces.reduce((n, p) => n + p.cost, 0);
+    const disc = parseFloat(document.getElementById('pp_disc').value) || 0;
+    const total = subtotal - disc;
+    const fee = payType === 'ecocash' ? Math.round(total * ECOCASH_FEE_RATE * 100) / 100 : 0;
+    const formId = Date.now();
+    const batchNo = nextBatchNo();
+    const voucher = document.getElementById('pp_voucher')?.value || '';
+
+    // photos → IndexedDB (device-local)
+    const photoIds = []; let photoFail = 0;
+    for (const ph of _formPhotos) { if (await photoPut(ph.id, ph.blob)) photoIds.push(ph.id); else photoFail++; }
+
+    const sale = {
+      id: formId + 3, date, formId, batchNo,
+      productName: `${name} — ${batchNo}`,
+      desc: pieces.map(p => p.productName + (p.desc ? ' (' + p.desc + ')' : '')).join('; '),
+      price: subtotal / pieces.length, qty: pieces.length, disc, total, cost,
+      profit: total - cost - fee, voucherCode: voucher,
+      paymentType: payType, ecocashFee: fee,
+    };
+    if (payNote) sale.paymentNote = payNote;
+    if (pieces.some(p => p.isOther)) sale.isOther = true;
+
+    const form = {
+      id: formId, batchNo, date, name, contact,
+      pieces: pieces.map(({ selected, ...rest }) => rest),
+      subtotal, discount: disc, total, paymentType: payType,
+      status: 'painted', history: [{ status: 'painted', at: new Date().toISOString() }],
+      photos: photoIds, saleId: sale.id, created: new Date().toISOString(), updatedAt: Date.now(),
+    };
+
+    if (voucher) applyVoucherToSale(voucher, disc, sale.id, 'pottery');
+    pieces.forEach(p => { if (p.productId != null) { const prod = PRODUCTS.pp.find(x => x.id === p.productId); if (prod) prod.qty = Math.max(0, (prod.qty || 0) - 1); } });
+    save(KEYS.products, PRODUCTS);
+
+    FORMS.push(form);
+    save(KEYS.forms, FORMS);
+    SALES.pottery.push(sale);
+    save(KEYS.sales, SALES);
+
+    if (payType === 'cash' && total > 0) {
+      FLOAT.push({ id: sale.id + 1, date, type: 'in', amount: total, desc: `Pottery Painting form ${batchNo} — ${name} (cash)`, auto: true, saleId: sale.id, saleStream: 'pottery' });
+      save(KEYS.float, FLOAT);
+      if (!isAssistant()) renderFloat();
+    }
+
+    // reset the entry card
+    document.getElementById('pf_name').value = ''; document.getElementById('pf_contact').value = '';
+    document.getElementById('pp_disc').value = 0;
+    const pv = document.getElementById('pp_voucher'); if (pv) pv.value = '';
+    ['pp_voucher_info', 'pp_voucher_split'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+    const pva = document.getElementById('pp_voucher_apply'); if (pva) pva.value = '';
+    document.getElementById('pp_paytype').value = 'cash'; document.getElementById('pp_payother').value = '';
+    document.getElementById('pf_pieces').innerHTML = ''; addFormPiece();
+    _formPhotos = []; renderFormPhotoPreviews();
+    calcFormTotals();
+
+    renderForms();
+    renderSalesLog('pottery');
+    if (!isAssistant()) { renderCatalogue('pp'); }
+    showAlert(`Form ${batchNo} logged for ${name}.` + (photoFail ? ` ${photoFail} photo(s) could not be saved on this device.` : ''));
+  } finally { _savingForm = false; }
+}
+
+// ── status flow + WhatsApp ──
+function setFormStatus(id, status) {
+  const f = FORMS.find(x => x.id === id);
+  if (!f || f.status === status) return;
+  let opened = false, hasNumber = true;
+  if (status === 'ready') {
+    // Opened first, straight from the click, so the browser doesn't block the pop-up.
+    const url = waLink(f);
+    if (url) { const w = window.open(url, '_blank'); if (w) { opened = true; try { w.opener = null; } catch (e) {} } }
+    else hasNumber = false;
+    f.notifiedAt = new Date().toISOString();
+  }
+  f.status = status; f.updatedAt = Date.now();
+  (f.history = f.history || []).push({ status, at: new Date().toISOString() });
+  save(KEYS.forms, FORMS);
+  renderForms();
+  if (status === 'ready') {
+    if (!hasNumber) showAlert(`${f.batchNo} marked ready, but the WhatsApp number isn't valid — use ✏️ to fix it.`, 'error');
+    else if (opened) showAlert(`${f.batchNo} marked ready. WhatsApp opened with the message — press Send to notify ${f.name}.`);
+    else showAlert(`${f.batchNo} marked ready. Pop-up was blocked — tap the 📲 WhatsApp button on the form to send the message.`, 'error');
+  } else {
+    showAlert(`${f.batchNo} → ${formStatusInfo(status).label}`);
+  }
+}
+function advanceForm(id) {
+  const f = FORMS.find(x => x.id === id); if (!f) return;
+  const i = FORM_STATUSES.findIndex(x => x.k === f.status);
+  if (i < FORM_STATUSES.length - 1) setFormStatus(id, FORM_STATUSES[i + 1].k);
+}
+function editFormContact(id) {
+  const f = FORMS.find(x => x.id === id); if (!f) return;
+  const nm = prompt('Customer name:', f.name); if (nm === null) return;
+  const ct = prompt('WhatsApp number:', f.contact); if (ct === null) return;
+  if (!nm.trim()) { showAlert('Name cannot be empty.', 'error'); return; }
+  if (!waNumber(ct)) { showAlert('That WhatsApp number does not look valid.', 'error'); return; }
+  f.name = nm.trim(); f.contact = ct.trim(); f.updatedAt = Date.now();
+  const sale = SALES.pottery.find(x => x.formId === f.id);
+  if (sale) { sale.productName = `${f.name} — ${f.batchNo}`; save(KEYS.sales, SALES); }
+  save(KEYS.forms, FORMS); renderForms(); renderSalesLog('pottery');
+  showAlert('Form updated.');
+}
+function deleteForm(id) {
+  const f = FORMS.find(x => x.id === id); if (!f) return;
+  if (!confirm(`Delete form ${f.batchNo} (${f.name}) and its Pottery Painting sale? Stock and gift-voucher balances are not restored.`)) return;
+  FORMS = FORMS.filter(x => x.id !== id);
+  save(KEYS.forms, FORMS);
+  SALES.pottery = SALES.pottery.filter(x => x.formId !== id);
+  save(KEYS.sales, SALES);
+  const fb = FLOAT.length;
+  FLOAT = FLOAT.filter(tx => !(tx.auto && tx.saleId === f.saleId));
+  if (FLOAT.length !== fb) { save(KEYS.float, FLOAT); renderFloat(); }
+  (f.photos || []).forEach(photoDel);
+  renderForms(); renderSalesLog('pottery');
+  showAlert('Form deleted.');
+}
+
+// ── list + search ──
+const _photoUrlCache = {};
+function renderForms() {
+  const host = document.getElementById('pf_list');
+  if (!host) return;
+  if (!document.querySelector('#pf_pieces .pf-piece')) addFormPiece();
+  const q = (document.getElementById('pf_search')?.value || '').trim().toLowerCase();
+  const qd = q.replace(/\D/g, '');
+  const sf = document.getElementById('pf_status_filter')?.value || 'active';
+  const dupes = {}; FORMS.forEach(f => { dupes[f.batchNo] = (dupes[f.batchNo] || 0) + 1; });
+  let list = FORMS.filter(f => {
+    if (sf === 'active') { if (!q && f.status === 'collected') return false; }
+    else if (sf !== 'all' && f.status !== sf) return false;
+    if (!q) return true;
+    if ((f.name || '').toLowerCase().includes(q)) return true;
+    if ((f.batchNo || '').toLowerCase().includes(q)) return true;
+    if (qd.length >= 3) {
+      const cd = String(f.contact || '').replace(/\D/g, ''), wd = waNumber(f.contact);
+      if (cd.includes(qd) || wd.includes(qd) || (qd.startsWith('0') && wd.endsWith(qd.slice(1)))) return true;
+    }
+    return false;
+  }).sort((a, b) => b.id - a.id);
+  const sum = document.getElementById('pf_summary');
+  if (sum) sum.textContent = list.length + ' of ' + FORMS.length + ' form' + (FORMS.length === 1 ? '' : 's');
+  if (!list.length) {
+    host.innerHTML = '<div class="empty-state"><div class="ei">🎨</div>' + (FORMS.length ? 'No forms match.' : 'No painting forms logged yet.') + '</div>';
+    return;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  host.innerHTML = list.map(f => {
+    const st = formStatusInfo(f.status), col = FORM_STATUS_COLORS[f.status] || FORM_STATUS_COLORS.painted;
+    const idx = FORM_STATUSES.findIndex(x => x.k === f.status);
+    const nxt = idx < FORM_STATUSES.length - 1 ? FORM_STATUSES[idx + 1] : null;
+    let collect = '';
+    if (f.notifiedAt && (f.status === 'ready' || f.status === 'contacted')) {
+      const by = new Date(new Date(f.notifiedAt).getTime() + 30 * 86400000).toISOString().slice(0, 10);
+      collect = ` · <span style="color:${by < today ? '#c04444' : 'var(--ash)'};font-weight:${by < today ? 600 : 400};">Collect by ${by}${by < today ? ' (overdue)' : ''}</span>`;
+    }
+    const wa = (f.status === 'ready' || f.status === 'contacted') ? waLink(f) : '';
+    return `<div class="pf-card">
+      <div class="pf-card-head">
+        <span class="pf-batch">${esc(f.batchNo)}</span>
+        ${dupes[f.batchNo] > 1 ? '<span class="badge" style="background:#f8d7d7;color:#c04444;" title="Two forms share this batch number (logged on different devices)">⚠ duplicate no.</span>' : ''}
+        <span class="pf-badge" style="background:${col[0]};color:${col[1]};">${st.icon} ${st.label}</span>
+        <span class="owner-only" style="margin-left:auto;font-weight:600;">${fmt(f.total)}</span>
+      </div>
+      <div class="pf-meta"><strong style="color:var(--smoke);">${esc(f.name)}</strong> · ${esc(f.contact)} · ${esc(f.date)}${collect}</div>
+      <ul class="pf-pieces-list">${(f.pieces || []).map(p => `<li>${esc(p.productName)}${p.desc ? ' — ' + esc(p.desc) : ''}</li>`).join('')}</ul>
+      ${(f.photos && f.photos.length) ? `<div>${f.photos.map(pid => `<img class="pf-thumb" data-photo="${esc(pid)}" alt="piece photo">`).join('')}</div>` : ''}
+      <div class="pf-actions">
+        ${nxt ? `<button class="btn btn-primary btn-sm" onclick="advanceForm(${f.id})">${nxt.icon} Move to ${nxt.label}</button>` : ''}
+        <select onchange="setFormStatus(${f.id}, this.value)" title="Set status" style="padding:0.35rem 0.5rem;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:0.8rem;background:var(--cream);color:var(--smoke);">
+          ${FORM_STATUSES.map(x => `<option value="${x.k}"${x.k === f.status ? ' selected' : ''}>${x.icon} ${x.label}</option>`).join('')}
+        </select>
+        ${wa ? `<a class="btn btn-secondary btn-sm" href="${wa}" target="_blank" rel="noopener">📲 WhatsApp</a>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="editFormContact(${f.id})" title="Edit name / number">✏️</button>
+        <button class="btn btn-danger btn-sm owner-only" onclick="deleteForm(${f.id})" title="Delete form">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  host.querySelectorAll('img[data-photo]').forEach(async img => {
+    const id = img.dataset.photo;
+    if (!_photoUrlCache[id]) { const b = await photoGet(id); if (b) _photoUrlCache[id] = URL.createObjectURL(b); }
+    if (_photoUrlCache[id]) { img.src = _photoUrlCache[id]; img.onclick = () => viewPhotoUrl(_photoUrlCache[id]); }
+    else img.replaceWith(Object.assign(document.createElement('span'), { className: 'pf-nophoto', title: 'This photo was added on a different device', textContent: '📷' }));
+  });
 }
 
 // ══════════════════════════════════════════
@@ -3960,7 +4419,7 @@ function _autoApplyVoucher(prefix, v) {
   const price  = parseFloat(document.getElementById(prefix + '_price')?.value)    || 0;
   const qty    = parseFloat(document.getElementById(prefix + '_qty')?.value || document.getElementById(prefix + '_qty2')?.value) || 1;
   const curDisc= 0; // start fresh
-  const orderTotal = price * qty;
+  const orderTotal = prefix === 'pp' ? formSubtotal() : price * qty;
   const balance    = v.balance || v.amount || 0;
   const applyEl    = document.getElementById(prefix + '_voucher_apply');
   // If user has typed a custom amount, use that; else use min(balance, orderTotal)
@@ -4432,6 +4891,7 @@ function forceLoadLocal() {
   try { FLOAT     = JSON.parse(localStorage.getItem('klay_float')     || '[]'); } catch(e){ FLOAT=[]; }
   try { VOUCHERS  = JSON.parse(localStorage.getItem('klay_vouchers')  || '[]'); } catch(e){ VOUCHERS=[]; }
   try { BOOKINGS  = JSON.parse(localStorage.getItem('klay_bookings')  || '[]'); } catch(e){ BOOKINGS=[]; }
+  try { FORMS     = JSON.parse(localStorage.getItem('klay_forms')     || '[]'); } catch(e){ FORMS=[]; }
   try { COSTS     = JSON.parse(localStorage.getItem('klay_costs')     || '{}'); } catch(e){}
 
   // Re-render everything
@@ -4447,6 +4907,7 @@ function forceLoadLocal() {
   renderVoucherLog();
   populateVoucherDropdowns();
   renderBookings();
+  renderForms();
 
   const total = streams.reduce((n,s) => n + (SALES[s]?.length||0), 0);
   showAlert('✓ Force loaded ' + total + ' sales records from browser storage.');
@@ -4560,6 +5021,7 @@ function bootApp() {
   FLOAT     = _readLocal('klay_float')     || [];
   VOUCHERS  = _readLocal('klay_vouchers')  || [];
   BOOKINGS  = _readLocal('klay_bookings')  || [];
+  FORMS     = _readLocal('klay_forms')     || [];
   VOUCHERS.forEach(v => { if (v.balance === undefined) v.balance = v.used ? 0 : v.amount; if (!v.originalAmount) v.originalAmount = v.amount; });
 
   const _asst = isAssistant();   // shop assistant: only the POS screens are ever rendered
@@ -4576,6 +5038,7 @@ function bootApp() {
   renderVoucherLog();
   populateVoucherDropdowns();
   renderBookings();
+  renderForms();
   if (!_asst) renderCustomOrders();
 }
 
