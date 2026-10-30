@@ -1974,10 +1974,33 @@ function monthLabel(ym) {
   return new Date(y, m-1, 1).toLocaleString('default', {month:'long', year:'numeric'});
 }
 
+// Custom orders only count towards turnover / profit once money has actually been
+// received. Each payment becomes its own dated entry carrying its share of the order's
+// cost and its own Ecocash fee; orders recorded before part-payments existed have no
+// payments array and are counted in full on their order date, as before.
+function recognisedCustom() {
+  const out = [];
+  (SALES.custom || []).forEach(o => {
+    if (!Array.isArray(o.payments)) { out.push(o); return; }
+    const total = o.total || 0;
+    o.payments.forEach(pm => {
+      const amt = pm.amount || 0;
+      if (!amt) return;
+      const cost = total ? (o.cost || 0) * amt / total : 0;
+      const fee = pm.type === 'ecocash' ? Math.round(amt * ECOCASH_FEE_RATE * 100) / 100 : 0;
+      out.push({ id: pm.id, date: pm.date || o.date, total: amt, cost, profit: amt - cost - fee });
+    });
+  });
+  return out;
+}
+function customOutstanding() {
+  return (SALES.custom || []).reduce((n, o) => n + (typeof orderBalance === 'function' ? orderBalance(o) : 0), 0);
+}
+
 function getAllMonths() {
   const months = new Set();
   months.add(currentYearMonth());
-  [...SALES.instore, ...SALES.pottery, ...SALES.workshop, ...SALES.wholesale, ...SALES.custom, ...SALES.classes].forEach(s => {
+  [...SALES.instore, ...SALES.pottery, ...SALES.workshop, ...SALES.wholesale, ...SALES.custom, ...recognisedCustom(), ...SALES.classes].forEach(s => {
     if (s.date) months.add(s.date.slice(0,7));
   });
   EXPENSES.forEach(e => { if (e.date) months.add(e.date.slice(0,7)); });
@@ -3707,7 +3730,7 @@ function getMonthData(month) {
   const pottery   = SALES.pottery.filter(filterMonth);
   const workshop  = SALES.workshop.filter(filterMonth);
   const wholesale = SALES.wholesale.filter(filterMonth);
-  const custom    = SALES.custom.filter(filterMonth);
+  const custom    = recognisedCustom().filter(filterMonth);
   const classes   = SALES.classes.filter(filterMonth);
   const expenses  = EXPENSES.filter(filterMonth);
 
@@ -3737,7 +3760,7 @@ function getMonthData(month) {
 
 function getAllTimeData() {
   const allStreams = [...SALES.instore, ...SALES.pottery, ...SALES.workshop,
-                     ...SALES.wholesale, ...SALES.custom, ...SALES.classes];
+                     ...SALES.wholesale, ...recognisedCustom(), ...SALES.classes];
   const sum = (arr, key) => arr.reduce((s,x) => s + (x[key]||0), 0);
   const overheadExp  = EXPENSES.filter(e=>(!e.section||e.section==='overhead')).reduce((s,e)=>s+(e.amount||0),0);
   const variableExp  = EXPENSES.filter(e=>e.section==='variable').reduce((s,e)=>s+(e.amount||0),0);
@@ -3749,7 +3772,7 @@ function getAllTimeData() {
     revPottery:   sum(SALES.pottery,   'total'),
     revWorkshop:  sum(SALES.workshop,  'total'),
     revWholesale: sum(SALES.wholesale, 'total'),
-    revCustom:    sum(SALES.custom,    'total'),
+    revCustom:    sum(recognisedCustom(), 'total'),
     revClasses:   sum(SALES.classes,   'total'),
     totalRevenue: sum(allStreams, 'total'),
     totalCOGS:    sum(allStreams, 'cost'),
@@ -3807,6 +3830,7 @@ function renderDashboard() {
       <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(d.revWholesale)}</span></div>` : ''}
       <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(d.revCustom)}</span></div>
       <div class="cost-row"><span>🎓 Classes</span><span>${fmt(d.revClasses)}</span></div>
+      ${customOutstanding() > 0.005 ? `<div class="cost-row" style="font-size:0.78rem;color:var(--ash);font-style:italic;"><span>⏳ Custom orders still owed (not counted)</span><span>${fmt(customOutstanding())}</span></div>` : ''}
       <div class="cost-row total"><span>Total</span><span>${fmt(d.totalRevenue)}</span></div>
     </div>
   `;
@@ -3860,6 +3884,7 @@ function renderDashboard() {
             <div class="cost-row"><span>📦 Wholesale</span><span>${fmt(at.revWholesale)}</span></div>` : ''}
             <div class="cost-row"><span>✏️ Custom Orders</span><span>${fmt(at.revCustom)}</span></div>
             <div class="cost-row"><span>🎓 Classes</span><span>${fmt(at.revClasses)}</span></div>
+            ${customOutstanding() > 0.005 ? `<div class="cost-row" style="font-size:0.78rem;color:var(--ash);font-style:italic;"><span>⏳ Custom orders still owed (not counted)</span><span>${fmt(customOutstanding())}</span></div>` : ''}
             <div class="cost-row total"><span>Total Revenue</span><span>${fmt(at.totalRevenue)}</span></div>
           </div>
         </div>
