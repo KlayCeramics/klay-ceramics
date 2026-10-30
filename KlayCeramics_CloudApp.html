@@ -730,14 +730,14 @@
 <div class="pos-sub active" id="possub-sales">
 
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchSalesTab('instore')">🏪 In-Store</button>
-    <button class="tab-btn" onclick="switchSalesTab('pottery')">🎨 Pottery Painting</button>
+    <button class="tab-btn" onclick="switchSalesTab('instore')">🏪 In-Store</button>
+    <button class="tab-btn active" onclick="switchSalesTab('pottery')">🎨 Pottery Painting</button>
     <button class="tab-btn" onclick="switchSalesTab('custom')">✏️ Custom</button>
     <button class="tab-btn" onclick="switchSalesTab('classes')">🎓 Classes</button>
     <button class="tab-btn" onclick="switchSalesTab('vouchers')">🎁 Gift Vouchers</button>
   </div>
 
-  <div class="tab-pane active" id="stab-instore">
+  <div class="tab-pane" id="stab-instore">
     <div class="card">
       <div class="card-title">New In-Store Sale</div>
       <div class="form-grid wide">
@@ -772,7 +772,7 @@
     </div>
   </div>
 
-  <div class="tab-pane" id="stab-pottery">
+  <div class="tab-pane active" id="stab-pottery">
     <div class="card">
       <div class="card-title">New Painting Form</div>
       <div style="font-size:0.82rem;color:var(--ash);margin:-0.3rem 0 0.9rem;">One form per customer or group. Add every piece being painted — the whole form gets one batch number and is counted as a Pottery Painting sale.</div>
@@ -945,6 +945,7 @@
       <div class="form-group"><label>Name</label><input type="text" id="bk_name" placeholder="Customer name"></div>
       <div class="form-group"><label>Contact</label><input type="text" id="bk_contact" placeholder="Phone / WhatsApp / email"></div>
       <div class="form-group"><label>Date of Booking</label><input type="date" id="bk_date"></div>
+      <div class="form-group"><label>Time Booked For (description)</label><input type="text" id="bk_time" placeholder="e.g. 10:00–12:00, morning session"></div>
       <div class="form-group"><label>Quantity (people)</label><input type="number" id="bk_qty" step="1" min="1" value="1"></div>
       <div class="form-group"><label>Notes</label><input type="text" id="bk_notes" placeholder="e.g. birthday party, 2 kids"></div>
     </div>
@@ -1296,6 +1297,31 @@
   </div>
 </div>
 
+
+<!-- ══════════════ ORDER EDIT MODAL ══════════════ -->
+<div class="modal-overlay" id="orderEditModal" onclick="if(event.target===this)closeOrderEdit()">
+  <div class="modal-box" style="max-width:600px;">
+    <div class="modal-header"><div class="modal-title">Edit Custom Order</div><button class="modal-close" onclick="closeOrderEdit()">✕</button></div>
+    <input type="hidden" id="oe_id">
+    <div class="form-grid wide">
+      <div class="form-group"><label>Date Ordered</label><input type="date" id="oe_date" data-nodefault></div>
+      <div class="form-group"><label>Client</label><input type="text" id="oe_cat"></div>
+      <div class="form-group"><label>Description</label><input type="text" id="oe_desc"></div>
+      <div class="form-group"><label>Due Date</label><input type="date" id="oe_due" data-nodefault></div>
+      <div class="form-group"><label>Unit Price (USD)</label><input type="number" id="oe_price" step="0.01" oninput="calcOrderEdit()"></div>
+      <div class="form-group"><label>Quantity</label><input type="number" id="oe_qty" step="1" min="1" oninput="calcOrderEdit()"></div>
+      <div class="form-group"><label>Unit Cost (USD)</label><input type="number" id="oe_cost" step="0.01" oninput="calcOrderEdit()"></div>
+      <div class="form-group"><label>Discount (USD)</label><input type="number" id="oe_disc" step="0.01" oninput="calcOrderEdit()"></div>
+      <div class="form-group"><label>Notes</label><input type="text" id="oe_notes"></div>
+      <div class="form-group"><label>Total (auto)</label><input type="text" id="oe_total" readonly style="background:var(--sand);font-weight:600;"></div>
+    </div>
+    <div id="oe_info" style="font-size:0.8rem;color:var(--ash);margin-top:0.6rem;"></div>
+    <div class="flex-end" style="margin-top:1rem;">
+      <button class="btn btn-secondary" onclick="closeOrderEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrderEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════ PHOTO VIEWER ══════════════ -->
 <div class="modal-overlay" id="photoViewModal" onclick="this.style.display='none'" style="cursor:zoom-out;">
@@ -2799,9 +2825,61 @@ function renderCustomOrders() {
         <td class="num">${fmt(orderPaid(o))}</td>
         <td class="num"><strong style="color:${bal > 0 ? '#c04444' : 'var(--glaze-green)'};">${bal > 0 ? fmt(bal) : 'Paid ✓'}</strong></td>
         <td>${o.dueDate ? esc(o.dueDate) : '—'}${late ? ' <span class="badge" style="background:#f8d7d7;color:#c04444;">Overdue</span>' : ''}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="openOrderPay(${o.id})">💳 Payments</button></td>
+        <td style="display:flex;gap:0.3rem;"><button class="btn btn-secondary btn-sm" onclick="openOrderPay(${o.id})">💳 Payments</button><button class="btn btn-ghost btn-sm" onclick="openOrderEdit(${o.id})" title="Edit order">✏️</button></td>
       </tr>`;
     }).join('')}</tbody></table></div>`;
+}
+
+function openOrderEdit(id) {
+  const o = SALES.custom.find(x => Number(x.id) === Number(id));
+  if (!o) return;
+  const q = o.qty || 1;
+  document.getElementById('oe_id').value    = o.id;
+  document.getElementById('oe_date').value  = o.date || '';
+  document.getElementById('oe_cat').value   = o.cat || '';
+  document.getElementById('oe_desc').value  = o.desc || '';
+  document.getElementById('oe_due').value   = o.dueDate || '';
+  document.getElementById('oe_price').value = o.price || 0;
+  document.getElementById('oe_qty').value   = q;
+  document.getElementById('oe_cost').value  = o.unitCost != null ? o.unitCost : ((o.cost || 0) / q);
+  document.getElementById('oe_disc').value  = o.disc || 0;
+  document.getElementById('oe_notes').value = o.notes || '';
+  calcOrderEdit();
+  document.getElementById('orderEditModal').style.display = 'flex';
+}
+function closeOrderEdit() { document.getElementById('orderEditModal').style.display = 'none'; }
+function calcOrderEdit() {
+  const total = (parseFloat(document.getElementById('oe_price').value) || 0) * (parseFloat(document.getElementById('oe_qty').value) || 1) - (parseFloat(document.getElementById('oe_disc').value) || 0);
+  document.getElementById('oe_total').value = fmt(total);
+  const o = SALES.custom.find(x => Number(x.id) === Number(document.getElementById('oe_id').value));
+  if (o) document.getElementById('oe_info').textContent = `Paid so far ${fmt(orderPaid(o))} → balance due ${fmt(Math.max(0, total - orderPaid(o)))}. Payments already recorded (and the Cash Float) are not changed.`;
+}
+function saveOrderEdit() {
+  const o = SALES.custom.find(x => Number(x.id) === Number(document.getElementById('oe_id').value));
+  if (!o) return;
+  const date = document.getElementById('oe_date').value;
+  if (!date) { showAlert('Please enter the date ordered.', 'error'); return; }
+  const price = parseFloat(document.getElementById('oe_price').value) || 0;
+  const qty = parseInt(document.getElementById('oe_qty').value) || 1;
+  const unitCost = parseFloat(document.getElementById('oe_cost').value) || 0;
+  const disc = parseFloat(document.getElementById('oe_disc').value) || 0;
+  // Orders recorded before part-payments existed were treated as paid in full — keep them that way
+  // by freezing that payment at the old total before the total changes.
+  if (!Array.isArray(o.payments)) o.payments = [{ id: o.id + 2, date: o.date, amount: o.total || 0, type: o.paymentType || 'cash', note: o.paymentNote || '', legacy: true }];
+  o.date = date;
+  o.cat = document.getElementById('oe_cat').value.trim();
+  o.desc = document.getElementById('oe_desc').value.trim();
+  o.dueDate = document.getElementById('oe_due').value || '';
+  o.notes = document.getElementById('oe_notes').value.trim();
+  o.price = price; o.qty = qty; o.unitCost = unitCost; o.disc = disc;
+  o.total = price * qty - disc;
+  o.cost = unitCost * qty;
+  recalcOrderProfit(o);
+  save(KEYS.sales, SALES);
+  closeOrderEdit();
+  renderCustomOrders();
+  renderSalesLog('custom');
+  showAlert('Order updated.');
 }
 
 function openOrderPay(id) {
@@ -2893,7 +2971,7 @@ let _editingBookingId = null;
 
 function resetBookingForm() {
   _editingBookingId = null;
-  ['bk_name','bk_contact','bk_notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['bk_name','bk_contact','bk_notes','bk_time'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const q = document.getElementById('bk_qty'); if (q) q.value = 1;
   const d = document.getElementById('bk_date'); if (d) d.value = new Date().toISOString().slice(0, 10);
   const t = document.getElementById('bk_type'); if (t) t.value = 'Pottery Painting';
@@ -2910,6 +2988,7 @@ function saveBooking() {
   const rec = {
     name, date,
     contact: document.getElementById('bk_contact').value.trim(),
+    timeNote: document.getElementById('bk_time').value.trim(),
     type:    document.getElementById('bk_type').value,
     qty:     Math.max(1, parseInt(document.getElementById('bk_qty').value) || 1),
     notes:   document.getElementById('bk_notes').value.trim(),
@@ -2936,6 +3015,7 @@ function editBooking(id) {
   document.getElementById('bk_date').value    = b.date || '';
   document.getElementById('bk_qty').value     = b.qty || 1;
   document.getElementById('bk_notes').value   = b.notes || '';
+  document.getElementById('bk_time').value    = b.timeNote || '';
   document.getElementById('bk_type').value    = b.type || 'Pottery Painting';
   document.getElementById('bkFormTitle').textContent = 'Edit Booking';
   document.getElementById('bkSaveBtn').textContent = 'Save Changes';
@@ -2967,9 +3047,10 @@ function renderBookings() {
     return;
   }
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Date</th><th>Type</th><th>Name</th><th>Contact</th><th class="num">Qty</th><th>Notes</th><th></th></tr></thead>
+    <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Name</th><th>Contact</th><th class="num">Qty</th><th>Notes</th><th></th></tr></thead>
     <tbody>${list.map(b => `<tr${b.date === today ? ' style="background:var(--sand);"' : ''}>
       <td>${esc(b.date)}${b.date === today ? ' <span class="badge badge-bisque">Today</span>' : ''}</td>
+      <td>${esc(b.timeNote || '—')}</td>
       <td>${b.type === 'Class' ? '🎓 Class' : '🎨 Pottery Painting'}</td>
       <td>${esc(b.name)}</td>
       <td>${esc(b.contact || '—')}</td>
@@ -3142,7 +3223,7 @@ function calcFormTotals() {
 function nextBatchNo() {
   let max = 0;
   FORMS.forEach(f => { const m = /(\d+)$/.exec(f.batchNo || ''); if (m) max = Math.max(max, parseInt(m[1], 10)); });
-  return 'PP-' + String(max + 1).padStart(4, '0');
+  return String(max + 1);
 }
 // Zimbabwe (263) is assumed for numbers starting with 0; use +<country code> for anything else.
 function waNumber(raw) {
@@ -3304,7 +3385,22 @@ function deleteForm(id) {
 
 // ── list + search ──
 const _photoUrlCache = {};
+// Earlier forms were numbered "PP-0001"; show them as plain numbers too (also fixes their sale rows).
+function normalizeBatchNumbers() {
+  let changed = false, salesChanged = false;
+  FORMS.forEach(f => {
+    const m = /^PP-0*(\d+)$/.exec(f.batchNo || '');
+    if (!m) return;
+    f.batchNo = m[1]; f.updatedAt = Date.now(); changed = true;
+    const sale = SALES.pottery.find(x => x.formId === f.id);
+    if (sale) { sale.batchNo = f.batchNo; sale.productName = `${f.name} — ${f.batchNo}`; salesChanged = true; }
+  });
+  if (changed) save(KEYS.forms, FORMS);
+  if (salesChanged) save(KEYS.sales, SALES);
+}
+
 function renderForms() {
+  normalizeBatchNumbers();
   const host = document.getElementById('pf_list');
   if (!host) return;
   if (!document.querySelector('#pf_pieces .pf-piece')) addFormPiece();
